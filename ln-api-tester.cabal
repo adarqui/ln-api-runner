@@ -23,7 +23,10 @@ library
                      , haskell-api-helpers
                      , break
                      , bytestring
+                     , containers
                      , http-types
+                     , mtl
+                     , tasty                >= 0.11.0.3 && <= 0.12
                      , text
                      , transformers
                      , wreq
