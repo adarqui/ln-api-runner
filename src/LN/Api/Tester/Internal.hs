@@ -9,6 +9,7 @@ module LN.Api.Tester.Internal (
 
 
 
+import Control.Monad.Except
 import           Control.Monad           (void)
 import           Control.Monad.IO.Class  (liftIO)
 import           Control.Monad.Trans.RWS
