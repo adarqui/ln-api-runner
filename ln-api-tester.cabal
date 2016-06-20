@@ -1,6 +1,6 @@
 name:                ln-api-tester
 version:             0.1.0.0
-synopsis:            Initial project template from stack
+synopsis:            Test LN API
 description:         Please see README.md
 homepage:            https://github.com/adarqui/ln-api-tester#readme
 license:             BSD3
