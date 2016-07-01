@@ -302,12 +302,13 @@ createUsers = do
 buildUser :: RunnerM UserRequest
 buildUser = do
   display_nick <- liftIO $ generate genDisplayNick
+  let nick     =  filter (/= ' ') display_nick
   pure $ UserRequest {
     userRequestDisplayNick = cs display_nick,
     userRequestName        = cs display_nick,
-    userRequestEmail       = cs $ (filter (/= ' ') display_nick) <> "@adarq.org",
+    userRequestEmail       = cs $ nick <> "@adarq.org",
     userRequestPlugin      = "ln-api-runner",
-    userRequestIdent       = "",
+    userRequestIdent       = cs nick,
     userRequestAcceptTOS   = Nothing
   }
 
