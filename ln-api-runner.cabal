@@ -1,8 +1,8 @@
-name:                ln-api-tester
+name:                ln-api-runner
 version:             0.1.0.0
 synopsis:            Test LN API
 description:         Please see README.md
-homepage:            https://github.com/adarqui/ln-api-tester#readme
+homepage:            https://github.com/adarqui/ln-api-runner#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Andrew Darqui
@@ -15,8 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     LN.Api.Tester
-                     , LN.Api.Tester.Internal
+  exposed-modules:     LN.Api.Runner
+                     , LN.Api.Runner.Internal
   build-depends:       base
                      , ln-api
                      , ln-types
@@ -24,31 +24,36 @@ library
                      , break
                      , bytestring
                      , containers
+                     , either
                      , http-types
                      , mtl
+                     , QuickCheck
+                     , quickcheck-text
+                     , string-conversions
                      , tasty
                      , text
                      , transformers
                      , wreq
+  ghc-options:         -Wall -Werror
   default-language:    Haskell2010
 
-executable ln-api-tester-exe
+executable ln-api-runner-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , ln-api-tester
+                     , ln-api-runner
   default-language:    Haskell2010
 
-test-suite ln-api-tester-test
+test-suite ln-api-runner-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
-                     , ln-api-tester
+                     , ln-api-runner
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head
   type:     git
-  location: https://github.com/adarqui/ln-api-tester
+  location: https://github.com/adarqui/ln-api-runner
