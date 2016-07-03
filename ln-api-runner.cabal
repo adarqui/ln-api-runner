@@ -18,9 +18,6 @@ library
   exposed-modules:     LN.Api.Runner
                      , LN.Api.Runner.Internal
   build-depends:       base
-                     , ln-api
-                     , ln-types
-                     , haskell-api-helpers
                      , break
                      , bytestring
                      , containers
@@ -34,6 +31,13 @@ library
                      , text
                      , transformers
                      , wreq
+                     , text-icu
+                     , text-regex-replace
+                     , ln-api
+                     , ln-types
+                     , ln-validate
+                     , ln-sanitize
+                     , haskell-api-helpers
   ghc-options:         -Wall -Werror
   default-language:    Haskell2010
 

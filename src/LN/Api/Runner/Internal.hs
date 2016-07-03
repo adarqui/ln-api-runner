@@ -30,7 +30,10 @@ import qualified Data.Text                  as T
 import           Data.Text.Arbitrary
 import           Haskell.Api.Helpers
 import           LN.Api
+import           LN.Generate
+import           LN.Sanitize
 import           LN.T
+import           LN.Validate
 import           Test.QuickCheck
 import           Test.QuickCheck.Utf8
 
@@ -71,7 +74,7 @@ data RunnerState = RunnerState {
   orgs  :: M.Map Text OrganizationPackResponse,
   users :: M.Map Text UserSanitizedPackResponse,
   keys  :: M.Map Text ApiResponse
-} deriving (Show)
+}
 
 
 
@@ -83,161 +86,69 @@ defaultRunnerState = RunnerState {
 
 
 
--- cs = convertString
-
-
-
-oneOf = oneof
-
-
-
-genUppercaseChar :: Gen Char
-genUppercaseChar = elements ['A'..'Z']
-
-genUppercaseString :: Gen String
-genUppercaseString = listOf genUppercaseChar
-
-
-
-genLowercaseChar :: Gen Char
-genLowercaseChar = elements ['a'..'z']
-
-genLowercaseString :: Gen String
-genLowercaseString = listOf genLowercaseChar
-
-
-
-genAlphaChar :: Gen Char
-genAlphaChar = oneOf [genUppercaseChar, genLowercaseChar]
-
-genAlphaString :: Gen String
-genAlphaString = listOf genAlphaChar
-
-
-
-genDigitChar :: Gen Char
-genDigitChar = elements ['0','1','2','3','4','5','6','7','8','9']
-
-genDigitString :: Gen String
-genDigitString = listOf genDigitChar
-
-
-
-genAlphaNumChar :: Gen Char
-genAlphaNumChar = oneOf [genAlphaChar, genDigitChar]
-
-genAlphaNumString :: Gen String
-genAlphaNumString = listOf genAlphaNumChar
-
-
-
-genSpaceChar :: Gen Char
-genSpaceChar = elements [' ']
-
-genSpaceString :: Gen String
-genSpaceString = listOf genSpaceChar
-
-
-genPunctChar :: Gen Char
-genPunctChar = elements "!@#$%^&*()_-+=~`{[}]|\\:;\"'<,>.?/"
-
-
-
-genAsciiChar :: Gen Char
-genAsciiChar = oneOf [genUppercaseChar, genLowercaseChar, genDigitChar, genSpaceChar, genPunctChar]
-
-genAsciiString :: Gen String
-genAsciiString = listOf genAsciiChar
-
-
-
-
-genUsername :: Gen String
-genUsername = listOf $ oneOf [genUppercaseChar, genLowercaseChar, genDigitChar]
-
-
-
-genDisplayNick :: Gen String
-genDisplayNick = listOf $ oneOf [genAlphaNumChar, genSpaceChar]
-
-
-
-
--- genEmail :: IO String
--- genEmail = do
---   user <- generate $ genUsername
---   pure (user <> "@adarq.org")
-
-
-
--- teste = forAll genUppercaseString $ \str -> str == str
-
-
-
-
 rd
   :: (Monoid w, MonadIO m)
-  => ReaderT ApiOptions IO (Either ApiError a)
-  -> RWST RunnerReader w s m (Either ApiError a)
+  => ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd actions = do
   opts <- asks rApiOpts
   liftIO $ runWith actions $ opts { apiKey = Just "1" }
 
 
 
-rd'
-  :: (Monoid w, MonadIO m)
-  => ReaderT ApiOptions IO (Either ApiError a)
-  -> RWST RunnerReader w s m (Either SomeException (Either ApiError a))
-rd' actions = do
-  opts <- asks rApiOpts
-  liftIO $ try (runWith actions $ opts { apiKey = Just "1" })
+-- rd'
+--   :: (Monoid w, MonadIO m)
+--   => ReaderT ApiOptions IO (Either (ApiError b) a)
+--   -> RWST RunnerReader w s m (Either SomeException (Either (ApiError b) a))
+-- rd' actions = do
+--   opts <- asks rApiOpts
+--   liftIO $ try (runWith actions $ opts { apiKey = Just "1" })
 
 
 
 rw
   :: (Monoid w, MonadIO m)
-  => ReaderT ApiOptions IO (Either ApiError a)
+  => ReaderT ApiOptions IO (Either (ApiError b) a)
   -> ByteString
-  -> RWST RunnerReader w s m (Either ApiError a)
+  -> RWST RunnerReader w s m (Either (ApiError b) a)
 rw actions s = do
   opts <- asks rApiOpts
   liftIO $ runWith actions $ opts { apiKey = Just s }
 
 
 
-rw'
-  :: (Monoid w, MonadIO m)
-  => ReaderT ApiOptions IO (Either ApiError a)
-  -> ByteString
-  -> RWST RunnerReader w s m (Either SomeException (Either ApiError a))
-rw' actions s = do
-  opts <- asks rApiOpts
-  liftIO $ try $ runWith actions $ opts { apiKey = Just s }
+-- rw'
+--   :: (Monoid w, MonadIO m)
+--   => ReaderT ApiOptions IO (Either (ApiError b) a)
+--   -> ByteString
+--   -> RWST RunnerReader w s m (Either SomeException (Either (ApiError b) a))
+-- rw' actions s = do
+--   opts <- asks rApiOpts
+--   liftIO $ try $ runWith actions $ opts { apiKey = Just s }
 
 
 
-left :: forall a (f :: * -> *) b.  Applicative f => a -> f (Either a b)
+left :: forall a (f :: * -> *) b. Applicative f => a -> f (Either a b)
 left  = pure . Left
 
 
 
-right :: forall a (f :: * -> *) a1.  Applicative f => a -> f (Either a1 a)
+right :: forall a (f :: * -> *) a1. Applicative f => a -> f (Either a1 a)
 right = pure . Right
 
 
 
-leftT :: forall e (m :: * -> *) a.  Monad m => e -> Either.EitherT e m a
+leftT :: forall e (m :: * -> *) a. Monad m => e -> Either.EitherT e m a
 leftT = Either.left
 
 
 
-rightT :: forall a e (m :: * -> *).  Monad m => a -> Either.EitherT e m a
+rightT :: forall a e (m :: * -> *). Monad m => a -> Either.EitherT e m a
 rightT = Either.right
 
 
 
-isT :: forall b (m :: * -> *) e.  Monad m => m (Either e b) -> Either.EitherT e m b
+isT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT e m b
 isT go = do
   x <- lift go
   case x of
@@ -246,11 +157,20 @@ isT go = do
 
 
 
-isNotT :: forall b (m :: * -> *) e.  Monad m => m (Either e b) -> Either.EitherT b m e
+isNotT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT b m e
 isNotT go = do
   x <- lift go
   case x of
     Left err -> rightT err
+    Right v  -> leftT v
+
+
+
+isNotT_D :: forall b (m :: * -> *) e. (MonadIO m, Monad m, Show e) => m (Either e b) -> Either.EitherT b m e
+isNotT_D go = do
+  x <- lift go
+  case x of
+    Left err -> liftIO (print err) *> rightT err
     Right v  -> leftT v
 
 
@@ -289,28 +209,13 @@ runnerRWST go = do
 
 createUsers :: RunnerM ()
 createUsers = do
-  user1 <- buildUser
-  user2 <- buildUser
+  user1 <- liftIO buildValidUser
+  user2 <- liftIO buildValidUser
   e_user1 <- rd (postUser' user1)
   e_user2 <- rd (postUser' user2)
   case (e_user1, e_user2) of
     (Right user1', Right user2') -> liftIO $ print "success"
-    _                      -> liftIO $ print "failure"
-
-
-
-buildUser :: RunnerM UserRequest
-buildUser = do
-  display_nick <- liftIO $ generate genDisplayNick
-  let nick     =  filter (/= ' ') display_nick
-  pure $ UserRequest {
-    userRequestDisplayNick = cs display_nick,
-    userRequestName        = cs display_nick,
-    userRequestEmail       = cs $ nick <> "@adarq.org",
-    userRequestPlugin      = "ln-api-runner",
-    userRequestIdent       = cs nick,
-    userRequestAcceptTOS   = Nothing
-  }
+    _                            -> liftIO $ print "failure"
 
 
 
@@ -326,15 +231,17 @@ removeUsers = pure ()
 testInvalidCreateUsers :: RunnerM (Either () ())
 testInvalidCreateUsers = do
   lr <- runEitherT $ do
-    user <- lift $ buildUser
-    isNotT $ rd' (postUser' $ user { userRequestDisplayNick = "" })
-    isNotT $ rd' (postUser' $ user { userRequestName = "" })
-    isNotT $ rd' (postUser' $ user { userRequestEmail = "" })
-    isNotT $ rd' (postUser' $ user { userRequestIdent = "" })
+    user <- liftIO buildValidUser
+    isNotT_D $ rd (postUser' $ user { userRequestDisplayNick = "" })
+    isNotT_D $ rd (postUser' $ user { userRequestName = "" })
+    isNotT_D $ rd (postUser' $ user { userRequestEmail = "" })
+    isNotT_D $ rd (postUser' $ user { userRequestIdent = "" })
     pure ()
 
   case lr of
-    Left _ -> left ()
+    Left _ -> do
+      liftIO $ print "LR ERROR"
+      left ()
     Right _ -> right ()
 
 
@@ -358,7 +265,7 @@ createOrganization :: OrganizationRequest -> RunnerM ()
 createOrganization org_req = do
   e_result <- rd (postOrganization' org_req)
   case e_result of
-    (Left err)           -> liftIO $ print err
+    (Left err)           -> liftIO $ print "err"
     (Right org_response) -> do
       pure ()
 
