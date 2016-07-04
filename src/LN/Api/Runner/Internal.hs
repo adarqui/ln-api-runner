@@ -14,6 +14,7 @@ module LN.Api.Runner.Internal where
 
 
 
+import System.Exit
 import           Control.Break              (break, loop)
 import           Control.Concurrent         (threadDelay)
 import           Control.Exception
@@ -303,6 +304,14 @@ printActualFailure message = do
 
 
 
+printFatal :: String -> IO ()
+printFatal message = do
+  putChunk $ chunk ("Fatal: " :: Text) & fore red & bold
+  putChunkLn $ chunk message & fore red & bold
+  exitFailure
+
+
+
 printPass :: forall a. ConvertibleStrings a Text => a -> IO ()
 printPass message = do
   putChunk $ chunk ("Pass: " :: Text) & fore green & bold
@@ -310,16 +319,24 @@ printPass message = do
 
 
 
+printInfo :: String -> IO ()
+printInfo message = do
+  putChunk $ chunk ("Info: " :: Text) & fore white & bold
+  putStrLn message
+
+
+
 launchRunner :: IO ()
 launchRunner = do
-  putStrLn "Launching"
+  printInfo "Launching API Runner"
   runnerRWST go
-  putStrLn "Done"
+  printInfo "Done"
   where
   go = do
-    testCreateUser
+    testCreateUser >>= either (const $ liftIO (printFatal "testCreateUser must not fail.")) (const $ pure ())
     testCreateInvaidUsers
     testInvalidCreateOrganizations
+    pure ()
 --    createUsers
 --    createOrganizations
 
