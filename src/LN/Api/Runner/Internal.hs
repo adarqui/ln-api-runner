@@ -17,25 +17,32 @@ import           Control.Monad              (void)
 import           Control.Monad
 import           Control.Monad.Except
 import           Control.Monad.IO.Class     (liftIO)
-import           Control.Monad.Trans.Either (runEitherT)
+import           Control.Monad.Trans.Either (EitherT, runEitherT)
 import qualified Control.Monad.Trans.Either as Either
 import           Control.Monad.Trans.Reader (ReaderT)
 import           Control.Monad.Trans.RWS
 import           Data.ByteString            (ByteString)
+import           Data.Either                (Either (..), isLeft)
 import qualified Data.Map                   as M
 import           Data.Monoid                ((<>))
 import           Data.String.Conversions
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
+import qualified Data.Text.IO as TIO
 import           Data.Text.Arbitrary
 import           Haskell.Api.Helpers
 import           LN.Api
 import           LN.Generate
 import           LN.Sanitize
 import           LN.T
+import           LN.T.Error                 (ApplicationError (..),
+                                             ValidationError (..),
+                                             ValidationErrorCode (..))
 import           LN.Validate
 import           Test.QuickCheck
 import           Test.QuickCheck.Utf8
+import Rainbow
+
 
 
 type RunnerM = RWST RunnerReader RunnerWriter RunnerState IO
@@ -58,7 +65,7 @@ defaultApiOpts = ApiOptions {
   apiUrl         = "http://dev.adarq.org",
   apiPrefix      = "api",
   apiKey         = Nothing,
-  apiKeyHeader   = Just "z-authorization",
+  apiKeyHeader   = Just "x-api-authorization",
   apiWreqOptions = defaultWreqOptions,
   apiDebug       = True
 }
@@ -92,7 +99,7 @@ rd
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd actions = do
   opts <- asks rApiOpts
-  liftIO $ runWith actions $ opts { apiKey = Just "1" }
+  liftIO $ runWith actions $ opts { apiKey = Just "poop" }
 
 
 
@@ -148,8 +155,8 @@ rightT = Either.right
 
 
 
-isT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT e m b
-isT go = do
+mustPassT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT e m b
+mustPassT go = do
   x <- lift go
   case x of
     Left err -> leftT err
@@ -157,8 +164,8 @@ isT go = do
 
 
 
-isNotT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT b m e
-isNotT go = do
+mustFailT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT b m e
+mustFailT go = do
   x <- lift go
   case x of
     Left err -> rightT err
@@ -166,12 +173,71 @@ isNotT go = do
 
 
 
-isNotT_D :: forall b (m :: * -> *) e. (MonadIO m, Monad m, Show e) => m (Either e b) -> Either.EitherT b m e
-isNotT_D go = do
+assertFailT :: forall b (m :: * -> *) e. (Eq e, Monad m) => e -> m (Either e b) -> Either.EitherT b m e
+assertFailT criteria go = do
   x <- lift go
   case x of
-    Left err -> liftIO (print err) *> rightT err
+    Left err -> do
+      if err /= criteria
+        then leftT undefined
+        else rightT err
     Right v  -> leftT v
+
+
+
+-- | An assertion for Failure.
+-- `go` must fail with Left _, in order for this test to Pass
+--
+assertFail_ValidateT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> ValidationError
+  -> m (Either (ApiError ApplicationError) e)
+  -> EitherT e m ValidationError
+assertFail_ValidateT message criteria go = do
+  x <- lift go
+  case x of
+    Left (ServerError _ (Error_Validation error_validation)) -> do
+      if error_validation /= criteria
+        then do
+          liftIO $ printFail message
+          liftIO $ printActualFailure (T.pack $ show error_validation)
+          leftT undefined
+        else (liftIO $ printPass message) *> rightT error_validation
+    Left err -> do
+      liftIO $ printFail message
+      liftIO $ printActualFailure (T.pack $ show err)
+      leftT undefined
+    Right v  -> do
+      liftIO $ printFail message
+      leftT v
+
+
+
+testPassFailT message act = do
+  lr <- act
+  if isLeft lr
+    then liftIO $ printFail message
+    else liftIO $ printPass message
+  pure lr
+
+
+
+printFail message = do
+  putChunk $ chunk ("Fail: " :: Text) & fore red & bold
+  TIO.putStrLn message
+
+
+
+printActualFailure message = do
+  putChunk $ chunk ("Actual: " :: Text) & fore red & bold
+  putChunk $ chunk message & fore cyan
+
+
+
+printPass message = do
+  putChunk $ chunk ("Pass: " :: Text) & fore green & bold
+  TIO.putStrLn message
 
 
 
@@ -232,16 +298,29 @@ testInvalidCreateUsers :: RunnerM (Either () ())
 testInvalidCreateUsers = do
   lr <- runEitherT $ do
     user <- liftIO buildValidUser
-    isNotT_D $ rd (postUser' $ user { userRequestDisplayNick = "" })
-    isNotT_D $ rd (postUser' $ user { userRequestName = "" })
-    isNotT_D $ rd (postUser' $ user { userRequestEmail = "" })
-    isNotT_D $ rd (postUser' $ user { userRequestIdent = "" })
+
+    void $ assertFail_ValidateT "Empty display_name = error" (Validate Validate_CannotBeEmpty $ Just "display_name") $
+      rd (postUser' $ user { userRequestDisplayName = "" })
+
+    void $ assertFail_ValidateT "Empty full_name = error" (Validate Validate_CannotBeEmpty $ Just "full_name") $
+      rd (postUser' $ user { userRequestFullName = "" })
+
+    void $ assertFail_ValidateT "Empty email = error" (Validate Validate_CannotBeEmpty $ Just "email") $
+      rd (postUser' $ user { userRequestEmail = "" })
+
+    void $ assertFail_ValidateT "Empty plugin = error" (Validate Validate_CannotBeEmpty $ Just "plugin") $
+      rd (postUser' $ user { userRequestPlugin = "" })
+
+    void $ assertFail_ValidateT "Empty ident = error" (Validate Validate_CannotBeEmpty $ Just "ident") $
+      rd (postUser' $ user { userRequestIdent = "" })
+
+    void $ assertFail_ValidateT "display_name > maxDisplayName = error" (Validate Validate_TooLong $ Just "display_name") $
+      rd (postUser' $ user { userRequestDisplayName = T.replicate 33 "A" })
+
     pure ()
 
   case lr of
-    Left _ -> do
-      liftIO $ print "LR ERROR"
-      left ()
+    Left _  -> left ()
     Right _ -> right ()
 
 

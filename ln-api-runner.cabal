@@ -26,6 +26,7 @@ library
                      , mtl
                      , QuickCheck
                      , quickcheck-text
+                     , rainbow
                      , string-conversions
                      , tasty
                      , text
