@@ -43,6 +43,7 @@ packages:
 - '../ln-validate'
 - '../haskell-api-helpers'
 - '../haskell-ifte'
+- '../haskell-rehtie'
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps: [break-1.0.0, text-regex-replace-0.1.1.1]

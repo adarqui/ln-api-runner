@@ -3,15 +3,19 @@
 -- Right now i'm keeping everything in one file, because i'm not sure how I want to structure things yet.
 --
 
-{-# LANGUAGE ExplicitForAll    #-}
-{-# LANGUAGE KindSignatures    #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE ExplicitForAll        #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE KindSignatures        #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module LN.Api.Runner.Internal where
 
 
 
+import           Control.Break              (break, loop)
+import           Control.Concurrent         (threadDelay)
 import           Control.Exception
 import           Control.Monad              (void)
 import           Control.Monad
@@ -20,16 +24,21 @@ import           Control.Monad.IO.Class     (liftIO)
 import           Control.Monad.Trans.Either (EitherT, runEitherT)
 import qualified Control.Monad.Trans.Either as Either
 import           Control.Monad.Trans.Reader (ReaderT)
-import           Control.Monad.Trans.RWS
+import qualified Control.Monad.Trans.Reader as Reader (asks)
+import           Control.Monad.Trans.RWS    (RWST, asks, evalRWST, get, modify,
+                                             put)
+import           Control.Monad.Trans.State  (StateT, evalStateT, runStateT)
+import qualified Control.Monad.Trans.State  as State (get, modify, put)
 import           Data.ByteString            (ByteString)
-import           Data.Either                (Either (..), isLeft)
+import           Data.Either                (Either (..), isLeft, isRight)
 import qualified Data.Map                   as M
 import           Data.Monoid                ((<>))
+import           Data.Rehtie
 import           Data.String.Conversions
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
-import qualified Data.Text.IO as TIO
 import           Data.Text.Arbitrary
+import qualified Data.Text.IO               as TIO
 import           Haskell.Api.Helpers
 import           LN.Api
 import           LN.Generate
@@ -39,9 +48,10 @@ import           LN.T.Error                 (ApplicationError (..),
                                              ValidationError (..),
                                              ValidationErrorCode (..))
 import           LN.Validate
+import           Prelude                    hiding (break)
+import           Rainbow
 import           Test.QuickCheck
 import           Test.QuickCheck.Utf8
-import Rainbow
 
 
 
@@ -173,6 +183,62 @@ mustFailT go = do
 
 
 
+assertT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> (Either e a -> Bool)
+  -> m (Either e a)
+  -> EitherT e m a
+assertT message test go = do
+  lr <- lift go
+  if test lr
+    then do
+      (liftIO $ printPass message) *> rightT ()
+    else do
+      liftIO $ printFail message
+  case lr of
+    Left l  -> leftT l
+    Right r -> rightT r
+
+
+
+-- | Retry `retries` times until a success
+--
+assertRetryT
+  :: (Monad m, MonadIO m)
+  => Int
+  -> Text
+  -> (Either e a -> Bool)
+  -> m (Either e a)
+  -> EitherT e m a
+assertRetryT retries message test go = do
+
+  liftIO $ print retries
+
+  lr <- lift $ runEitherT $ do
+    assertT message test go
+  case lr of
+    Left err -> do
+      if retries == 0
+        then liftIO (printActualFailure "Maximum retries attempted.") *> leftT err
+        else assertRetryT (retries-1) message test go
+    Right v  -> rightT v
+
+
+  --
+  -- lr <- flip evalStateT 0 $ loop $ do
+  --   n <- lift (State.modify (+1) *> State.get)
+  --   lr <- lift $ assertT message test go
+  --   if (isLeft lr || n == retries)
+  --     then break lr
+  --     else break lr
+
+  -- case lr of
+  --   Left err -> leftT err
+  --   Right v  -> rightT v
+
+
+
 assertFailT :: forall b (m :: * -> *) e. (Eq e, Monad m) => e -> m (Either e b) -> Either.EitherT b m e
 assertFailT criteria go = do
   x <- lift go
@@ -201,12 +267,12 @@ assertFail_ValidateT message criteria go = do
       if error_validation /= criteria
         then do
           liftIO $ printFail message
-          liftIO $ printActualFailure (T.pack $ show error_validation)
+          liftIO $ printActualFailure (show error_validation)
           leftT undefined
         else (liftIO $ printPass message) *> rightT error_validation
     Left err -> do
       liftIO $ printFail message
-      liftIO $ printActualFailure (T.pack $ show err)
+      liftIO $ printActualFailure (show err)
       leftT undefined
     Right v  -> do
       liftIO $ printFail message
@@ -223,21 +289,24 @@ testPassFailT message act = do
 
 
 
+printFail :: forall a. ConvertibleStrings a Text => a -> IO ()
 printFail message = do
   putChunk $ chunk ("Fail: " :: Text) & fore red & bold
-  TIO.putStrLn message
+  TIO.putStrLn (cs message)
 
 
 
+printActualFailure :: String -> IO ()
 printActualFailure message = do
-  putChunk $ chunk ("Actual: " :: Text) & fore red & bold
-  putChunk $ chunk message & fore cyan
+  putChunk $ chunk ("ActualFailure: " :: Text) & fore red & bold
+  putChunkLn $ chunk message & fore cyan
 
 
 
+printPass :: forall a. ConvertibleStrings a Text => a -> IO ()
 printPass message = do
   putChunk $ chunk ("Pass: " :: Text) & fore green & bold
-  TIO.putStrLn message
+  TIO.putStrLn (cs message)
 
 
 
@@ -248,7 +317,9 @@ launchRunner = do
   putStrLn "Done"
   where
   go = do
-    testInvalidCreateUsers
+    testCreateUser
+    testCreateInvaidUsers
+    testInvalidCreateOrganizations
 --    createUsers
 --    createOrganizations
 
@@ -290,12 +361,28 @@ removeUsers = pure ()
 
 
 
+testCreateUser :: RunnerM (Either () ())
+testCreateUser = do
+  lr <- runEitherT $ do
+    user_request <- liftIO buildValidUser
+    user@UserResponse{..} <- assertT "A valid user is created" isRight $
+      rd (postUser' user_request)
+    void $ assertRetryT 5 "After a user is created, a profile is subsequently created" isRight $
+      rd (getUserProfiles_ByUserId' userResponseId)
+    void $ assertRetryT 5 "After a user is created, an api entry is subsequently created" isRight $
+      rd getApis'
+    pure ()
+
+  either (const $ left ()) (const $ right ()) lr
+
+
+
 -- | Tests invalid user creation
 -- User creation via this api call can only happen in "GOD MODE" anyway..
 -- User creation via the api is used by ln-api-runner & ln-smf-migrate
 --
-testInvalidCreateUsers :: RunnerM (Either () ())
-testInvalidCreateUsers = do
+testCreateInvaidUsers :: RunnerM (Either () ())
+testCreateInvaidUsers = do
   lr <- runEitherT $ do
     user <- liftIO buildValidUser
 
@@ -319,12 +406,16 @@ testInvalidCreateUsers = do
 
     pure ()
 
-  case lr of
-    Left _  -> left ()
-    Right _ -> right ()
+  either (const $ left ()) (const $ right ()) lr
 
 
 
+testInvalidCreateOrganizations :: RunnerM (Either () ())
+testInvalidCreateOrganizations = do
+  runEitherT $ do
+    user <- liftIO buildValidUser
+    pure ()
+--    api  <- liftIO $ rd (postApi' $ ApiRequest (Just "comment) 0)
 
 
 

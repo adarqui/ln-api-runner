@@ -39,6 +39,7 @@ library
                      , ln-validate
                      , ln-sanitize
                      , haskell-api-helpers
+                     , haskell-rehtie
   ghc-options:         -Wall -Werror
   default-language:    Haskell2010
 
