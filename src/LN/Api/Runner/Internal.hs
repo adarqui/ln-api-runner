@@ -214,8 +214,6 @@ assertRetryT
   -> EitherT e m a
 assertRetryT retries message test go = do
 
-  liftIO $ print retries
-
   lr <- lift $ runEitherT $ do
     assertT message test go
   case lr of
