@@ -138,6 +138,15 @@ rd_Api api_key actions = do
 
 
 
+rd_AsUser
+  :: (Monoid w, MonadIO m)
+  => UserResponse
+  -> ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> RWST RunnerReader w s m (Either (ApiError b) a)
+rd_AsUser UserResponse{..} = rd_AsUserId userResponseId
+
+
+
 rd_AsUserId
   :: (Monoid w, MonadIO m)
   => Int64
@@ -190,6 +199,15 @@ rightT = Either.right
 
 
 
+mustPassT' :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT () m ()
+mustPassT' go = do
+  x <- lift go
+  case x of
+    Left err -> leftT ()
+    Right v  -> rightT ()
+
+
+
 mustPassT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT e m b
 mustPassT go = do
   x <- lift go
@@ -205,6 +223,38 @@ mustFailT go = do
   case x of
     Left err -> rightT err
     Right v  -> leftT v
+
+
+
+assertTrueT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> m Bool
+  -> EitherT Bool m Bool
+assertTrueT message go = assertBoolT message True go
+
+
+
+assertFalseT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> m Bool
+  -> EitherT Bool m Bool
+assertFalseT message go = assertBoolT message False go
+
+
+
+assertBoolT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> Bool
+  -> m Bool
+  -> EitherT Bool m Bool
+assertBoolT message b go = do
+  result <- lift go
+  if result == b
+    then (liftIO $ printPass message) *> rightT True
+    else (liftIO $ printFail message) *> leftT False
 
 
 
@@ -348,6 +398,12 @@ printInfo message = do
 
 
 
+printSection :: String -> IO ()
+printSection message = do
+  putChunkLn $ chunk ("- " <> message) & fore blue & bold
+
+
+
 launchRunner :: IO ()
 launchRunner = do
   printInfo "Launching API Runner"
@@ -355,9 +411,15 @@ launchRunner = do
   printInfo "Done"
   where
   go = do
-    testCreateUser >>= either (const $ liftIO (printFatal "testCreateUser must not fail.")) (const $ pure ())
+    testCreateUser >>= either (const $ liftIO (printFatal "testCreateUser must not fail.")) pure
     testCreateInvaidUsers
+
+    testCreateOrganization >>= either (const $ liftIO (printFatal "testCreateOrganization must not fail.")) pure
     testCreateInvalidOrganizations
+
+    forM_ [1..5] $ const $ do
+      testOrganizations >>= either (const $ liftIO (printFatal "testOrganizations must not fail.")) pure
+
     pure ()
 --    createUsers
 --    createOrganizations
@@ -402,6 +464,9 @@ removeUsers = pure ()
 
 testCreateUser :: RunnerM (Either () ())
 testCreateUser = do
+
+  liftIO $ printSection "Testing user creation"
+
   lr <- runEitherT $ do
     user_request <- liftIO buildValidUser
     user@UserResponse{..} <- assertT "A valid user is created" isRight $
@@ -422,6 +487,9 @@ testCreateUser = do
 --
 testCreateInvaidUsers :: RunnerM (Either () ())
 testCreateInvaidUsers = do
+
+  liftIO $ printSection "Creating invalid users"
+
   lr <- runEitherT $ do
     user <- liftIO buildValidUser
 
@@ -459,7 +527,6 @@ testCreateInvalidOrganizations = do
 
 
 
-
 createOrganizations :: RunnerM ()
 createOrganizations = do
 --  org_a <- createOrganization "1240177678" $ OrganizationRequest "orga" (Just "org a") "Org A" "TestLand" "runner.org.a@adarq.org" Membership_Join [] Nothing Public 0
@@ -483,3 +550,54 @@ createOrganization org_req = do
 removeOrganizations :: RunnerM ()
 removeOrganizations = do
   pure ()
+
+
+
+testCreateOrganization :: RunnerM (Either () ())
+testCreateOrganization = do
+
+  liftIO $ printSection "Testing organization creation"
+
+  lr <- runEitherT $ do
+    owner_req <- liftIO buildValidUser
+    org_req   <- liftIO buildValidOrganization
+    owner                        <- assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
+    org@OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
+    void $ runEitherT $ assertTrueT "Created organization is owned by owner" $ pure (organizationResponseUserId == (userResponseId owner))
+
+    mustPassT $ testOrganizationsMembershipOwner org owner
+    pure ()
+
+  either (const $ left ()) (const $ right ()) lr
+
+
+
+testOrganizations :: RunnerM (Either () ())
+testOrganizations = do
+
+  liftIO $ printSection "Testing Organizations"
+
+  lr <- runEitherT $ do
+    owner_req <- liftIO buildValidUser
+    user_req  <- liftIO buildValidUser
+    org_req   <- liftIO buildValidOrganization
+    owner                        <- assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
+    user                         <- assertT "A user is created" isRight $ rd_Super (postUser' user_req)
+    org@OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
+    pure ()
+
+  either (const $ left ()) (const $ right ()) lr
+
+
+
+testOrganizationsMembershipOwner :: OrganizationResponse -> UserResponse -> RunnerM (Either (ApiError ApplicationError) ())
+testOrganizationsMembershipOwner org@OrganizationResponse{..} owner@UserResponse{..} = do
+
+  liftIO $ printSection "Testing Organization Membership for an Owner"
+
+  runEitherT $ do
+    teams <- assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
+    void $ runEitherT $ assertTrueT "Only 2 teams exist" $ pure (length (teamResponses teams) == 2)
+    pure ()
+
+--  either (const $ left ()) (const $ right()) lr
