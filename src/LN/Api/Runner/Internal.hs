@@ -14,10 +14,8 @@ module LN.Api.Runner.Internal where
 
 
 
-import Data.Int (Int64)
-import System.Exit (exitFailure)
 import           Control.Break              (break, loop)
-import           Control.Concurrent         (threadDelay)
+import           Control.Concurrent         (forkIO, threadDelay)
 import           Control.Exception
 import           Control.Monad              (void)
 import           Control.Monad
@@ -33,6 +31,7 @@ import           Control.Monad.Trans.State  (StateT, evalStateT, runStateT)
 import qualified Control.Monad.Trans.State  as State (get, modify, put)
 import           Data.ByteString            (ByteString)
 import           Data.Either                (Either (..), isLeft, isRight)
+import           Data.Int                   (Int64)
 import qualified Data.Map                   as M
 import           Data.Monoid                ((<>))
 import           Data.Rehtie
@@ -52,6 +51,7 @@ import           LN.T.Error                 (ApplicationError (..),
 import           LN.Validate
 import           Prelude                    hiding (break)
 import           Rainbow
+import           System.Exit                (exitFailure)
 import           Test.QuickCheck
 import           Test.QuickCheck.Utf8
 
@@ -404,6 +404,13 @@ printSection message = do
 
 
 
+launchRunners :: Int -> IO ()
+launchRunners n = do
+  forM_ [1..n] $ const $ forkIO launchRunner
+  forever $ getLine
+
+
+
 launchRunner :: IO ()
 launchRunner = do
   printInfo "Launching API Runner"
@@ -471,6 +478,7 @@ testCreateUser = do
     user_request <- liftIO buildValidUser
     user@UserResponse{..} <- assertT "A valid user is created" isRight $
       rd_Super (postUser' user_request)
+    void $ runEitherT $ assertTrueT "User is active" $ pure (userResponseActive == True)
     void $ assertRetryT 5 "After a user is created, a profile is subsequently created" isRight $
       rd_Super (getUserProfiles_ByUserId' userResponseId)
     void $ assertRetryT 5 "After a user is created, an api entry is subsequently created" isRight $
@@ -564,6 +572,7 @@ testCreateOrganization = do
     owner                        <- assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
     org@OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
     void $ runEitherT $ assertTrueT "Created organization is owned by owner" $ pure (organizationResponseUserId == (userResponseId owner))
+    void $ runEitherT $ assertTrueT "Organization is active" $ pure (organizationResponseActive == True)
 
     mustPassT $ testOrganizationsMembershipOwner org owner
     pure ()
@@ -599,8 +608,21 @@ testOrganizationsMembershipOwner org@OrganizationResponse{..} owner@UserResponse
     teams <- assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
     let team_responses = teamResponses teams
     void $ runEitherT $ assertTrueT "Only 2 teams exist" $ pure (length team_responses == 2)
-    void $ runEitherT $ assertTrueT "Owner is belongs to Team_Owners" $ pure (elem Team_Owners $ map teamResponseSystem team_responses)
-    void $ runEitherT $ assertTrueT "Member is belongs to Team_Members" $ pure (elem Team_Members $ map teamResponseSystem team_responses)
+    void $ runEitherT $ assertTrueT "Team_Owners exists" $ pure (elem Team_Owners $ map teamResponseSystem team_responses)
+    void $ runEitherT $ assertTrueT "Team_Members exists" $ pure (elem Team_Members $ map teamResponseSystem team_responses)
+    forM_ team_responses $ \team -> mustPassT $ testOrganizationsMembership_OfTeam team owner
     pure ()
 
 --  either (const $ left ()) (const $ right()) lr
+
+
+
+testOrganizationsMembership_OfTeam :: TeamResponse -> UserResponse -> RunnerM (Either (ApiError ApplicationError) ())
+testOrganizationsMembership_OfTeam team@TeamResponse{..} user@UserResponse{..} = do
+
+  liftIO $ printSection "Testing membership of an organization"
+
+  runEitherT $ do
+    team_members <- assertT "TeamMembers exists" isRight $ rd_AsUser user (getTeamMembers_ByTeamId' teamResponseId)
+    let team_member_responses = teamMemberResponses team_members
+    pure ()
