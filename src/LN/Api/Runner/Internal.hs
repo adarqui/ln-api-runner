@@ -32,6 +32,7 @@ import qualified Control.Monad.Trans.State  as State (get, modify, put)
 import           Data.ByteString            (ByteString)
 import           Data.Either                (Either (..), isLeft, isRight)
 import           Data.Int                   (Int64)
+import           Data.List                  (find)
 import qualified Data.Map                   as M
 import           Data.Monoid                ((<>))
 import           Data.Rehtie
@@ -510,12 +511,12 @@ testCreateUser = do
 
   lr <- runEitherT $ do
     user_request <- liftIO buildValidUser
-    user@UserResponse{..} <- assertT "A valid user is created" isRight $
+    user@UserResponse{..} <- _assertT "A valid user is created" isRight $
       rd_Super (postUser' user_request)
-    void $ runEitherT $ assertTrueT "User is active" $ pure (userResponseActive == True)
-    void $ assertRetryT 5 "After a user is created, a profile is subsequently created" isRight $
+    void $ _assertTrueT "User is active" $ pure (userResponseActive == True)
+    void $ _assertRetryT 5 "After a user is created, a profile is subsequently created" isRight $
       rd_Super (getUserProfiles_ByUserId' userResponseId)
-    void $ assertRetryT 5 "After a user is created, an api entry is subsequently created" isRight $
+    void $ _assertRetryT 5 "After a user is created, an api entry is subsequently created" isRight $
       rd_AsUserId userResponseId getApis'
     pure ()
 
@@ -535,22 +536,22 @@ testCreateInvaidUsers = do
   lr <- runEitherT $ do
     user <- liftIO buildValidUser
 
-    void $ assertFail_ValidateT "Empty display_name = error" (Validate Validate_CannotBeEmpty $ Just "display_name") $
+    void $ _assertFail_ValidateT "Empty display_name = error" (Validate Validate_CannotBeEmpty $ Just "display_name") $
       rd_Super (postUser' $ user { userRequestDisplayName = "" })
 
-    void $ assertFail_ValidateT "Empty full_name = error" (Validate Validate_CannotBeEmpty $ Just "full_name") $
+    void $ _assertFail_ValidateT "Empty full_name = error" (Validate Validate_CannotBeEmpty $ Just "full_name") $
       rd_Super (postUser' $ user { userRequestFullName = "" })
 
-    void $ assertFail_ValidateT "Empty email = error" (Validate Validate_CannotBeEmpty $ Just "email") $
+    void $ _assertFail_ValidateT "Empty email = error" (Validate Validate_CannotBeEmpty $ Just "email") $
       rd_Super (postUser' $ user { userRequestEmail = "" })
 
-    void $ assertFail_ValidateT "Empty plugin = error" (Validate Validate_CannotBeEmpty $ Just "plugin") $
+    void $ _assertFail_ValidateT "Empty plugin = error" (Validate Validate_CannotBeEmpty $ Just "plugin") $
       rd_Super (postUser' $ user { userRequestPlugin = "" })
 
-    void $ assertFail_ValidateT "Empty ident = error" (Validate Validate_CannotBeEmpty $ Just "ident") $
+    void $ _assertFail_ValidateT "Empty ident = error" (Validate Validate_CannotBeEmpty $ Just "ident") $
       rd_Super (postUser' $ user { userRequestIdent = "" })
 
-    void $ assertFail_ValidateT "display_name > maxDisplayName = error" (Validate Validate_TooLong $ Just "display_name") $
+    void $ _assertFail_ValidateT "display_name > maxDisplayName = error" (Validate Validate_TooLong $ Just "display_name") $
       rd_Super (postUser' $ user { userRequestDisplayName = T.replicate 33 "A" })
 
     pure ()
@@ -603,12 +604,12 @@ testCreateOrganization = do
   lr <- runEitherT $ do
     owner_req <- liftIO buildValidUser
     org_req   <- liftIO buildValidOrganization
-    owner                        <- assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
-    org@OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
-    void $ runEitherT $ assertTrueT "Created organization is owned by owner" $ pure (organizationResponseUserId == (userResponseId owner))
-    void $ runEitherT $ assertTrueT "Organization is active" $ pure (organizationResponseActive == True)
+    owner                        <- _assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
+    org@OrganizationResponse{..} <- _assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
+    void $ runEitherT $ _assertTrueT "Created organization is owned by owner" $ pure (organizationResponseUserId == (userResponseId owner))
+    void $ _assertTrueT "Organization is active" $ pure (organizationResponseActive == True)
 
-    mustPassT $ testOrganizationsMembershipOwner org owner
+    _mustPassT $ testOrganizationsMembershipOwner org owner
     pure ()
 
   either (const $ left ()) (const $ right ()) lr
@@ -624,42 +625,203 @@ testOrganizations = do
     owner_req <- liftIO buildValidUser
     user_req  <- liftIO buildValidUser
     org_req   <- liftIO buildValidOrganization
-    owner                        <- assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
-    user                         <- assertT "A user is created" isRight $ rd_Super (postUser' user_req)
-    org@OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
+    owner                        <- _assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
+    user                         <- _assertT "A user is created" isRight $ rd_Super (postUser' user_req)
+    org@OrganizationResponse{..} <- _assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
     pure ()
 
   either (const $ left ()) (const $ right ()) lr
 
 
 
-testOrganizationsMembershipOwner :: OrganizationResponse -> UserResponse -> RunnerM (Either (ApiError ApplicationError) ())
+testOrganizationsMembershipOwner :: OrganizationResponse -> UserResponse -> RunnerM (Either () ())
 testOrganizationsMembershipOwner org@OrganizationResponse{..} owner@UserResponse{..} = do
 
   liftIO $ printSection "Testing Organization Membership for an Owner"
 
   runEitherT $ do
-    teams <- assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
+    teams <- _assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
     let team_responses = teamResponses teams
-    void $ runEitherT $ assertTrueT "Only 2 teams exist" $ pure (length team_responses == 2)
-    void $ runEitherT $ assertTrueT "Team_Owners exists" $ pure (elem Team_Owners $ map teamResponseSystem team_responses)
-    void $ runEitherT $ assertTrueT "Team_Members exists" $ pure (elem Team_Members $ map teamResponseSystem team_responses)
-    forM_ team_responses $ \team -> mustPassT $ testOrganizationsMembership_OfTeam team owner
+    void $ _assertTrueT "Only 2 teams exist" $ pure (length team_responses == 2)
+    void $ _assertTrueT "Team_Owners exists" $ pure (elem Team_Owners $ map teamResponseSystem team_responses)
+    void $ _assertTrueT "Team_Members exists" $ pure (elem Team_Members $ map teamResponseSystem team_responses)
+
+    forM_ team_responses $ \team -> _mustPassT $ testOrganizationsMembership_OfTeam team owner
+
     forM_ team_responses $ \TeamResponse{..} -> do
-      void $ assertT "Cannot delete teams" isLeft $ rd_AsUser owner (deleteTeam' teamResponseId)
---      void $ runEitherT $ assertFail_ServerErrorT "Cannot delete teams" Error_Unknown $ rd_AsUser owner (deleteTeam' teamResponseId)
+      void $ _assertT "Cannot delete teams" isLeft $ rd_AsUser owner (deleteTeam' teamResponseId)
+
+    forM_ team_responses $ \TeamResponse{..} -> do
+      team_members <- _assertT "Team has members" isRight $ rd_AsUser owner (getTeamMembers_ByTeamId' teamResponseId)
+      let team_member_responses = teamMemberResponses team_members
+      _assertTrueT "Owner is a member of this team" $ pure $ (find (\TeamMemberResponse{..} -> teamMemberResponseId == userResponseId) team_member_responses) /= Nothing
+
     pure ()
 
 --  either (const $ left ()) (const $ right()) lr
 
 
 
-testOrganizationsMembership_OfTeam :: TeamResponse -> UserResponse -> RunnerM (Either (ApiError ApplicationError) ())
+testOrganizationsMembership_OfTeam :: TeamResponse -> UserResponse -> RunnerM (Either () ())
 testOrganizationsMembership_OfTeam team@TeamResponse{..} user@UserResponse{..} = do
 
   liftIO $ printSection "Testing membership of an organization"
 
   runEitherT $ do
-    team_members <- assertT "TeamMembers exists" isRight $ rd_AsUser user (getTeamMembers_ByTeamId' teamResponseId)
-    let team_member_responses = teamMemberResponses team_members
+--    team_members <- _assertT "TeamMembers exists" isRight $ rd_AsUser user (getTeamMembers_ByTeamId' teamResponseId)
+--    let team_member_responses = teamMemberResponses team_members
     pure ()
+
+
+
+
+--
+-- JANK LIFE: getting rid of 'e' and forcing it to () .. was having too much problems lining up types
+--
+--
+_assertTrueT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> m Bool
+  -> EitherT () m Bool
+_assertTrueT message go = _assertBoolT message True go
+
+
+
+_assertFalseT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> m Bool
+  -> EitherT () m Bool
+_assertFalseT message go = _assertBoolT message False go
+
+
+
+_assertBoolT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> Bool
+  -> m Bool
+  -> EitherT () m Bool
+_assertBoolT message b go = do
+  result <- lift go
+  if result == b
+    then (liftIO $ printPass message) *> _rightT True
+    else (liftIO $ printFail message) *> _leftT ()
+
+
+
+_assertT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> (Either e a -> Bool)
+  -> m (Either e a)
+  -> EitherT () m a
+_assertT message test go = do
+  lr <- lift go
+  if test lr
+    then do
+      (liftIO $ printPass message) *> _rightT ()
+    else do
+      liftIO $ printFail message
+  case lr of
+    Left l  -> if test lr then _rightT undefined else _leftT ()
+    Right r -> if test lr then _rightT r else _leftT ()
+
+
+
+-- | Retry `retries` times until a success
+--
+_assertRetryT
+  :: (Monad m, MonadIO m)
+  => Int
+  -> Text
+  -> (Either e a -> Bool)
+  -> m (Either e a)
+  -> EitherT () m a
+_assertRetryT retries message test go = do
+
+  lr <- lift $ runEitherT $ do
+    _assertT message test go
+  case lr of
+    Left err -> do
+      if retries == 0
+        then liftIO (printActualFailure "Maximum retries attempted.") *> _leftT ()
+        else _assertRetryT (retries-1) message test go
+    Right v  -> _rightT v
+
+
+
+-- | An assertion for Failure.
+-- `go` must fail with Left _, in order for this test to Pass
+--
+_assertFail_ValidateT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> ValidationError
+  -> m (Either (ApiError ApplicationError) e)
+  -> EitherT () m ()
+_assertFail_ValidateT message criteria go = do
+  x <- lift go
+  case x of
+    Left (ServerError _ (Error_Validation error_validation)) -> do
+      if error_validation /= criteria
+        then do
+          liftIO $ printFail message
+          liftIO $ printActualFailure (show error_validation)
+          _leftT ()
+        else (liftIO $ printPass message) *> _rightT ()
+    Left err -> do
+      liftIO $ printFail message
+      liftIO $ printActualFailure (show err)
+      _leftT ()
+    Right v  -> do
+      liftIO $ printFail message
+      _leftT ()
+
+
+
+-- | TODO CLEANUP : HACKING IT UP
+--
+_assertFail_ServerErrorT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> ApplicationError
+  -> m (Either (ApiError ApplicationError) e)
+  -> EitherT () m ()
+_assertFail_ServerErrorT message criteria go = do
+  x <- lift go
+  case x of
+    Left (ServerError _ application_error) -> do
+      if application_error /= criteria
+        then do
+          liftIO $ printFail message
+          liftIO $ printActualFailure (show application_error)
+          _leftT ()
+        else (liftIO $ printPass message) *> _rightT ()
+    Left err -> do
+      liftIO $ printFail message
+      liftIO $ printActualFailure (show err)
+      _leftT ()
+    Right v  -> do
+      liftIO $ printFail message
+      _leftT ()
+
+
+
+_mustPassT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT () m b
+_mustPassT go = do
+  x <- lift go
+  case x of
+    Left err -> _leftT ()
+    Right v  -> _rightT v
+
+
+
+_leftT :: forall e (m :: * -> *) a. Monad m => e -> Either.EitherT () m a
+_leftT _ = Either.left ()
+
+
+
+_rightT :: forall a e (m :: * -> *). Monad m => a -> Either.EitherT () m a
+_rightT = Either.right
