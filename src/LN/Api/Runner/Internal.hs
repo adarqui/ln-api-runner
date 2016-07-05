@@ -597,7 +597,10 @@ testOrganizationsMembershipOwner org@OrganizationResponse{..} owner@UserResponse
 
   runEitherT $ do
     teams <- assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
-    void $ runEitherT $ assertTrueT "Only 2 teams exist" $ pure (length (teamResponses teams) == 2)
+    let team_responses = teamResponses teams
+    void $ runEitherT $ assertTrueT "Only 2 teams exist" $ pure (length team_responses == 2)
+    void $ runEitherT $ assertTrueT "Owner is belongs to Team_Owners" $ pure (elem Team_Owners $ map teamResponseSystem team_responses)
+    void $ runEitherT $ assertTrueT "Member is belongs to Team_Members" $ pure (elem Team_Members $ map teamResponseSystem team_responses)
     pure ()
 
 --  either (const $ left ()) (const $ right()) lr
