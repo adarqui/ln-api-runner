@@ -656,6 +656,10 @@ testOrganizationsMembershipOwner org@OrganizationResponse{..} owner@UserResponse
       let team_member_responses = teamMemberResponses team_members
       _assertTrueT "Owner is a member of this team" $ pure $ (find (\TeamMemberResponse{..} -> teamMemberResponseUserId == userResponseId) team_member_responses) /= Nothing
 
+      let my_memberships = filter (\TeamMemberResponse{..} -> teamMemberResponseUserId == userResponseId) team_member_responses
+      forM_ my_memberships $ \TeamMemberResponse{..} -> do
+        _assertT "Owner cannot delete themselves from a team" isLeft $ rd_AsUser owner (deleteTeamMember' teamMemberResponseId)
+
     pure ()
 
 --  either (const $ left ()) (const $ right()) lr
