@@ -14,7 +14,8 @@ module LN.Api.Runner.Internal where
 
 
 
-import System.Exit
+import Data.Int (Int64)
+import System.Exit (exitFailure)
 import           Control.Break              (break, loop)
 import           Control.Concurrent         (threadDelay)
 import           Control.Exception
@@ -104,23 +105,57 @@ defaultRunnerState = RunnerState {
 
 
 
-rd
+superKey :: ByteString
+superKey = "pooppooppooppooppooppooppooppooppooppooppooppooppooppooppooppooppooppoop"
+
+
+
+rd_Super
   :: (Monoid w, MonadIO m)
   => ReaderT ApiOptions IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
-rd actions = do
+rd_Super = rd_Api superKey
+
+
+
+rd_AsApiKey
+  :: (Monoid w, MonadIO m)
+  => ByteString
+  -> ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> RWST RunnerReader w s m (Either (ApiError b) a)
+rd_AsApiKey = rd_Api
+
+
+
+rd_Api
+  :: (Monoid w, MonadIO m)
+  => ByteString
+  -> ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> RWST RunnerReader w s m (Either (ApiError b) a)
+rd_Api api_key actions = do
   opts <- asks rApiOpts
-  liftIO $ runWith actions $ opts { apiKey = Just "poop" }
+  liftIO $ runWith actions $ opts { apiKey = Just api_key }
 
 
 
--- rd'
---   :: (Monoid w, MonadIO m)
---   => ReaderT ApiOptions IO (Either (ApiError b) a)
---   -> RWST RunnerReader w s m (Either SomeException (Either (ApiError b) a))
--- rd' actions = do
---   opts <- asks rApiOpts
---   liftIO $ try (runWith actions $ opts { apiKey = Just "1" })
+rd_AsUserId
+  :: (Monoid w, MonadIO m)
+  => Int64
+  -> ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> RWST RunnerReader w s m (Either (ApiError b) a)
+rd_AsUserId user_id actions = do
+  opts <- asks rApiOpts
+  liftIO $ runWith actions $ opts { apiKeyHeader = Just "x-as-user",  apiKey = Just (superKey <> (cs $ show user_id)) }
+
+
+
+rd_Guest
+  :: (Monoid w, MonadIO m)
+  => ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> RWST RunnerReader w s m (Either (ApiError b) a)
+rd_Guest actions = do
+  opts <- asks rApiOpts
+  liftIO $ runWith actions $ opts
 
 
 
@@ -132,17 +167,6 @@ rw
 rw actions s = do
   opts <- asks rApiOpts
   liftIO $ runWith actions $ opts { apiKey = Just s }
-
-
-
--- rw'
---   :: (Monoid w, MonadIO m)
---   => ReaderT ApiOptions IO (Either (ApiError b) a)
---   -> ByteString
---   -> RWST RunnerReader w s m (Either SomeException (Either (ApiError b) a))
--- rw' actions s = do
---   opts <- asks rApiOpts
---   liftIO $ try $ runWith actions $ opts { apiKey = Just s }
 
 
 
@@ -363,8 +387,8 @@ createUsers :: RunnerM ()
 createUsers = do
   user1 <- liftIO buildValidUser
   user2 <- liftIO buildValidUser
-  e_user1 <- rd (postUser' user1)
-  e_user2 <- rd (postUser' user2)
+  e_user1 <- rd_Super (postUser' user1)
+  e_user2 <- rd_Super (postUser' user2)
   case (e_user1, e_user2) of
     (Right user1', Right user2') -> liftIO $ print "success"
     _                            -> liftIO $ print "failure"
@@ -381,11 +405,11 @@ testCreateUser = do
   lr <- runEitherT $ do
     user_request <- liftIO buildValidUser
     user@UserResponse{..} <- assertT "A valid user is created" isRight $
-      rd (postUser' user_request)
+      rd_Super (postUser' user_request)
     void $ assertRetryT 5 "After a user is created, a profile is subsequently created" isRight $
-      rd (getUserProfiles_ByUserId' userResponseId)
+      rd_Super (getUserProfiles_ByUserId' userResponseId)
     void $ assertRetryT 5 "After a user is created, an api entry is subsequently created" isRight $
-      rd getApis'
+      rd_AsUserId userResponseId getApis'
     pure ()
 
   either (const $ left ()) (const $ right ()) lr
@@ -402,22 +426,22 @@ testCreateInvaidUsers = do
     user <- liftIO buildValidUser
 
     void $ assertFail_ValidateT "Empty display_name = error" (Validate Validate_CannotBeEmpty $ Just "display_name") $
-      rd (postUser' $ user { userRequestDisplayName = "" })
+      rd_Super (postUser' $ user { userRequestDisplayName = "" })
 
     void $ assertFail_ValidateT "Empty full_name = error" (Validate Validate_CannotBeEmpty $ Just "full_name") $
-      rd (postUser' $ user { userRequestFullName = "" })
+      rd_Super (postUser' $ user { userRequestFullName = "" })
 
     void $ assertFail_ValidateT "Empty email = error" (Validate Validate_CannotBeEmpty $ Just "email") $
-      rd (postUser' $ user { userRequestEmail = "" })
+      rd_Super (postUser' $ user { userRequestEmail = "" })
 
     void $ assertFail_ValidateT "Empty plugin = error" (Validate Validate_CannotBeEmpty $ Just "plugin") $
-      rd (postUser' $ user { userRequestPlugin = "" })
+      rd_Super (postUser' $ user { userRequestPlugin = "" })
 
     void $ assertFail_ValidateT "Empty ident = error" (Validate Validate_CannotBeEmpty $ Just "ident") $
-      rd (postUser' $ user { userRequestIdent = "" })
+      rd_Super (postUser' $ user { userRequestIdent = "" })
 
     void $ assertFail_ValidateT "display_name > maxDisplayName = error" (Validate Validate_TooLong $ Just "display_name") $
-      rd (postUser' $ user { userRequestDisplayName = T.replicate 33 "A" })
+      rd_Super (postUser' $ user { userRequestDisplayName = T.replicate 33 "A" })
 
     pure ()
 
@@ -448,7 +472,7 @@ createOrganizations = do
 
 createOrganization :: OrganizationRequest -> RunnerM ()
 createOrganization org_req = do
-  e_result <- rd (postOrganization' org_req)
+  e_result <- rd_Super (postOrganization' org_req)
   case e_result of
     (Left err)           -> liftIO $ print "err"
     (Right org_response) -> do
