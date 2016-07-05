@@ -139,7 +139,7 @@ rd_Api api_key actions = do
 
 
 rd_AsUser
-  :: (Monoid w, MonadIO m)
+  :: (Monoid w, MonadIO m, Show a, Show b)
   => UserResponse
   -> ReaderT ApiOptions IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
@@ -148,13 +148,15 @@ rd_AsUser UserResponse{..} = rd_AsUserId userResponseId
 
 
 rd_AsUserId
-  :: (Monoid w, MonadIO m)
+  :: (Monoid w, MonadIO m, Show b, Show a)
   => Int64
   -> ReaderT ApiOptions IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd_AsUserId user_id actions = do
   opts <- asks rApiOpts
-  liftIO $ runWith actions $ opts { apiKeyHeader = Just "x-as-user",  apiKey = Just (superKey <> (cs $ show user_id)) }
+  v <- liftIO $ runWith actions $ opts { apiKeyHeader = Just "x-as-user",  apiKey = Just (superKey <> (cs $ show user_id)) }
+  liftIO $ print v
+  pure v
 
 
 
@@ -353,6 +355,34 @@ assertFail_ValidateT message criteria go = do
 
 
 
+-- | TODO CLEANUP : HACKING IT UP
+--
+assertFail_ServerErrorT
+  :: (Monad m, MonadIO m)
+  => Text
+  -> ApplicationError
+  -> m (Either (ApiError ApplicationError) e)
+  -> EitherT e m ApplicationError
+assertFail_ServerErrorT message criteria go = do
+  x <- lift go
+  case x of
+    Left (ServerError _ application_error) -> do
+      if application_error /= criteria
+        then do
+          liftIO $ printFail message
+          liftIO $ printActualFailure (show application_error)
+          leftT undefined
+        else (liftIO $ printPass message) *> rightT application_error
+    Left err -> do
+      liftIO $ printFail message
+      liftIO $ printActualFailure (show err)
+      leftT undefined
+    Right v  -> do
+      liftIO $ printFail message
+      leftT v
+
+
+
 testPassFailT message act = do
   lr <- act
   if isLeft lr
@@ -404,6 +434,10 @@ printSection message = do
 
 
 
+-- | DONT USE THIS, WILL BREAK YOUR TERMINAL
+--
+-- NEED CENTRALIZED LOGGING FUNCTION TO HANDLE TERMINAL PROPERLY
+--
 launchRunners :: Int -> IO ()
 launchRunners n = do
   forM_ [1..n] $ const $ forkIO launchRunner
@@ -611,6 +645,9 @@ testOrganizationsMembershipOwner org@OrganizationResponse{..} owner@UserResponse
     void $ runEitherT $ assertTrueT "Team_Owners exists" $ pure (elem Team_Owners $ map teamResponseSystem team_responses)
     void $ runEitherT $ assertTrueT "Team_Members exists" $ pure (elem Team_Members $ map teamResponseSystem team_responses)
     forM_ team_responses $ \team -> mustPassT $ testOrganizationsMembership_OfTeam team owner
+    forM_ team_responses $ \TeamResponse{..} -> do
+      void $ assertT "Cannot delete teams" isLeft $ rd_AsUser owner (deleteTeam' teamResponseId)
+--      void $ runEitherT $ assertFail_ServerErrorT "Cannot delete teams" Error_Unknown $ rd_AsUser owner (deleteTeam' teamResponseId)
     pure ()
 
 --  either (const $ left ()) (const $ right()) lr
