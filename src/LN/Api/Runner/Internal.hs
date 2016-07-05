@@ -357,7 +357,7 @@ launchRunner = do
   go = do
     testCreateUser >>= either (const $ liftIO (printFatal "testCreateUser must not fail.")) (const $ pure ())
     testCreateInvaidUsers
-    testInvalidCreateOrganizations
+    testCreateInvalidOrganizations
     pure ()
 --    createUsers
 --    createOrganizations
@@ -449,8 +449,8 @@ testCreateInvaidUsers = do
 
 
 
-testInvalidCreateOrganizations :: RunnerM (Either () ())
-testInvalidCreateOrganizations = do
+testCreateInvalidOrganizations :: RunnerM (Either () ())
+testCreateInvalidOrganizations = do
   runEitherT $ do
     user <- liftIO buildValidUser
     pure ()
