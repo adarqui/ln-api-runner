@@ -654,7 +654,7 @@ testOrganizationsMembershipOwner org@OrganizationResponse{..} owner@UserResponse
     forM_ team_responses $ \TeamResponse{..} -> do
       team_members <- _assertT "Team has members" isRight $ rd_AsUser owner (getTeamMembers_ByTeamId' teamResponseId)
       let team_member_responses = teamMemberResponses team_members
-      _assertTrueT "Owner is a member of this team" $ pure $ (find (\TeamMemberResponse{..} -> teamMemberResponseId == userResponseId) team_member_responses) /= Nothing
+      _assertTrueT "Owner is a member of this team" $ pure $ (find (\TeamMemberResponse{..} -> teamMemberResponseUserId == userResponseId) team_member_responses) /= Nothing
 
     pure ()
 
