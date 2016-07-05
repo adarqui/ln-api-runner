@@ -155,7 +155,7 @@ rd_AsUserId
 rd_AsUserId user_id actions = do
   opts <- asks rApiOpts
   v <- liftIO $ runWith actions $ opts { apiKeyHeader = Just "x-as-user",  apiKey = Just (superKey <> (cs $ show user_id)) }
-  liftIO $ print v
+--  liftIO $ print v
   pure v
 
 
@@ -274,8 +274,8 @@ assertT message test go = do
     else do
       liftIO $ printFail message
   case lr of
-    Left l  -> leftT l
-    Right r -> rightT r
+    Left l  -> if test lr then rightT undefined else leftT l
+    Right r -> if test lr then rightT r else leftT undefined
 
 
 
