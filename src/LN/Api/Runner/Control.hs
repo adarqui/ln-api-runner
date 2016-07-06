@@ -14,54 +14,27 @@ module LN.Api.Runner.Control (
   RunnerState (..),
   defaultRunnerState,
   defaultApiOpts,
-
-  runnerM
+  runnerM,
+  left,
+  right,
+  _leftT,
+  _rightT
 ) where
 
 
 
--- import           Control.Break              (break, loop)
--- import           Control.Concurrent         (forkIO, threadDelay)
--- import           Control.Exception
 import           Control.Monad              (void)
--- import           Control.Monad.Except
 import           Control.Monad.IO.Class     ()
--- import           Control.Monad.Trans.Either (EitherT, runEitherT)
--- import qualified Control.Monad.Trans.Either as Either
--- import           Control.Monad.Trans.Reader (ReaderT)
--- import qualified Control.Monad.Trans.Reader as Reader (asks)
+import qualified Control.Monad.Trans.Either as Either
 import           Control.Monad.Trans.RWS    (RWST, asks, evalRWST, get, modify,
-                                              put)
--- import           Control.Monad.Trans.State  (StateT, evalStateT, runStateT)
--- import qualified Control.Monad.Trans.State  as State (get, modify, put)
--- import           Data.ByteString            (ByteString)
--- import           Data.Either                (Either (..), isLeft, isRight)
--- import           Data.Int                   (Int64)
--- import           Data.List                  (find)
+                                             put)
 import qualified Data.Map                   as M
--- import           Data.Monoid                ((<>))
--- import           Data.Rehtie
--- import           Data.String.Conversions
 import           Data.Text                  (Text)
--- import qualified Data.Text                  as T
--- import           Data.Text.Arbitrary
--- import qualified Data.Text.IO               as TIO
-import           Haskell.Api.Helpers (ApiOptions(..), defaultWreqOptions)
--- import           LN.Api
--- import           LN.Generate
--- import           LN.Sanitize
-import           LN.T.Api.Response (ApiResponse)
-import LN.T.Pack.Sanitized.User (UserSanitizedPackResponse)
-import LN.T.Pack.Organization (OrganizationPackResponse)
--- import           LN.T.Error                 (ApplicationError (..),
---                                              ValidationError (..),
---                                              ValidationErrorCode (..))
--- import           LN.Validate
--- import           Prelude                    hiding (break)
--- import           Rainbow
--- import           System.Exit                (exitFailure)
--- import           Test.QuickCheck
--- import           Test.QuickCheck.Utf8
+import           Haskell.Api.Helpers        (ApiOptions (..),
+                                             defaultWreqOptions)
+import           LN.T.Api.Response          (ApiResponse)
+import           LN.T.Pack.Organization     (OrganizationPackResponse)
+import           LN.T.Pack.Sanitized.User   (UserSanitizedPackResponse)
 
 
 
@@ -117,3 +90,24 @@ runnerM :: forall a. RunnerM a -> IO ()
 runnerM go = do
   void $ evalRWST go defaultRunnerReader defaultRunnerState
   pure ()
+
+
+
+left :: forall a (f :: * -> *) b. Applicative f => a -> f (Either a b)
+left  = pure . Left
+
+
+
+right :: forall a (f :: * -> *) a1. Applicative f => a -> f (Either a1 a)
+right = pure . Right
+
+
+
+
+_leftT :: forall e (m :: * -> *) a. Monad m => e -> Either.EitherT () m a
+_leftT _ = Either.left ()
+
+
+
+_rightT :: forall a e (m :: * -> *). Monad m => a -> Either.EitherT () m a
+_rightT = Either.right
