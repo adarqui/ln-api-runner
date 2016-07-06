@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
 
-module LN.Api.Runner.Internal where
+module LN.Api.Runner.Print where
 
 
 
@@ -50,3 +50,45 @@ import           Rainbow
 import           System.Exit                (exitFailure)
 import           Test.QuickCheck
 import           Test.QuickCheck.Utf8
+
+
+
+printFail :: forall a. ConvertibleStrings a Text => a -> IO ()
+printFail message = do
+  putChunk $ chunk ("Fail: " :: Text) & fore red & bold
+  TIO.putStrLn (cs message)
+
+
+
+printActualFailure :: String -> IO ()
+printActualFailure message = do
+  putChunk $ chunk ("ActualFailure: " :: Text) & fore red & bold
+  putChunkLn $ chunk message & fore cyan
+
+
+
+printFatal :: String -> IO ()
+printFatal message = do
+  putChunk $ chunk ("Fatal: " :: Text) & fore red & bold
+  putChunkLn $ chunk message & fore red & bold
+  exitFailure
+
+
+
+printPass :: forall a. ConvertibleStrings a Text => a -> IO ()
+printPass message = do
+  putChunk $ chunk ("Pass: " :: Text) & fore green & bold
+  TIO.putStrLn (cs message)
+
+
+
+printInfo :: String -> IO ()
+printInfo message = do
+  putChunk $ chunk ("Info: " :: Text) & fore white & bold
+  putStrLn message
+
+
+
+printSection :: String -> IO ()
+printSection message = do
+  putChunkLn $ chunk ("- " <> message) & fore blue & bold

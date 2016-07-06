@@ -16,7 +16,15 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     LN.Api.Runner
+                     , LN.Api.Runner.Api
+                     , LN.Api.Runner.Assert
+                     , LN.Api.Runner.Control
+                     , LN.Api.Runner.Launch
                      , LN.Api.Runner.Internal
+                     , LN.Api.Runner.Print
+                     , LN.Api.Runner.Organization
+                     , LN.Api.Runner.User
+                     , LN.Api.Runner.Forum
   build-depends:       base
                      , break
                      , bytestring
