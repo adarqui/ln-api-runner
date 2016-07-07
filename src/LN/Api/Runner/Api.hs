@@ -1,9 +1,5 @@
-{-# LANGUAGE ExplicitForAll        #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 module LN.Api.Runner.Api (
   rd_Super,

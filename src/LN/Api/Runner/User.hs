@@ -9,11 +9,10 @@ module LN.Api.Runner.User (
 ) where
 
 
-import           Control.Monad              (forever, void)
+import           Control.Monad              (void)
 import           Control.Monad.IO.Class     (liftIO)
-import           Control.Monad.Trans.Either (EitherT, runEitherT)
-import           Data.Either                (Either (..), isLeft, isRight)
-import           Data.Text                  (Text)
+import           Control.Monad.Trans.Either (runEitherT)
+import           Data.Either                (isRight)
 import qualified Data.Text                  as T (replicate)
 import           LN.Api
 import           LN.Api.Runner.Api
@@ -21,8 +20,7 @@ import           LN.Api.Runner.Assert
 import           LN.Api.Runner.Control
 import           LN.Api.Runner.Print
 import           LN.Generate
-import           LN.T.Error                 (ApplicationError (..),
-                                             ValidationError (..),
+import           LN.T.Error                 (ValidationError (..),
                                              ValidationErrorCode (..))
 import           LN.T.User.Request          (UserRequest (..))
 import           LN.T.User.Response         (UserResponse (..))
@@ -36,8 +34,8 @@ createUsers = do
   e_user1 <- rd_Super (postUser' user1)
   e_user2 <- rd_Super (postUser' user2)
   case (e_user1, e_user2) of
-    (Right user1', Right user2') -> liftIO $ print "success"
-    _                            -> liftIO $ print "failure"
+    (Right _, Right _) -> liftIO $ putStrLn "success"
+    _                  -> liftIO $ putStrLn "failure"
 
 
 
@@ -53,7 +51,7 @@ testCreateUser = do
 
   lr <- runEitherT $ do
     user_request <- liftIO buildValidUser
-    user@UserResponse{..} <- _assertT "A valid user is created" isRight $
+    UserResponse{..} <- _assertT "A valid user is created" isRight $
       rd_Super (postUser' user_request)
     void $ _assertTrueT "User is active" $ pure (userResponseActive == True)
     void $ _assertRetryT 5 "After a user is created, a profile is subsequently created" isRight $
