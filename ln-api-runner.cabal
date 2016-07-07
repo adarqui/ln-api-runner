@@ -35,6 +35,7 @@ library
                      , QuickCheck
                      , quickcheck-text
                      , rainbow
+                     , statestack
                      , string-conversions
                      , tasty
                      , text

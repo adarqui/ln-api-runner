@@ -3,6 +3,7 @@
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module LN.Api.Runner.Control (
   RunnerM,
@@ -17,15 +18,21 @@ module LN.Api.Runner.Control (
   left,
   right,
   leftT,
-  rightT
+  rightT,
+  enterM,
+  leaveM
 ) where
 
 
 
 import           Control.Monad              (void)
 import           Control.Monad.IO.Class     ()
+import           Control.Monad.State.Lazy   (get, put)
+import           Control.Monad.StateStack   (StateStackT, restore,
+                                             runStateStackT, save)
+import           Control.Monad.Trans        (lift)
 import qualified Control.Monad.Trans.Either as Either
-import           Control.Monad.Trans.RWS    (RWST, evalRWST)
+import           Control.Monad.Trans.RWS    (RWST, runRWST)
 import qualified Data.Map                   as M
 import           Data.Text                  (Text)
 import           Haskell.Api.Helpers        (ApiOptions (..),
@@ -36,7 +43,18 @@ import           LN.T.Pack.Sanitized.User   (UserSanitizedPackResponse)
 
 
 
-type RunnerM = RWST RunnerReader RunnerWriter RunnerState IO
+type RunnerM = RWST RunnerReader RunnerWriter RunnerState (StateStackT StackState IO)
+
+
+
+data StackState = StackState {
+  level :: Int
+} deriving (Show, Eq)
+
+defaultStackState :: StackState
+defaultStackState = StackState {
+  level = 0
+}
 
 
 
@@ -87,7 +105,7 @@ defaultApiOpts = ApiOptions {
 
 runnerM :: forall a. RunnerM a -> IO ()
 runnerM go = do
-  void $ evalRWST go defaultRunnerReader defaultRunnerState
+  void $ runStateStackT (runRWST go defaultRunnerReader defaultRunnerState) defaultStackState
   pure ()
 
 
@@ -110,3 +128,19 @@ leftT _ = Either.left ()
 
 rightT :: forall a (m :: * -> *). Monad m => a -> Either.EitherT () m a
 rightT = Either.right
+
+
+
+enterM :: RunnerM ()
+enterM = do
+  StackState{..} <- lift $ get
+  lift $ put $ StackState (level+1)
+  lift save
+
+
+
+leaveM :: RunnerM ()
+leaveM = do
+  StackState{..} <- lift get
+  lift $ put $ StackState (level-1)
+  lift restore
