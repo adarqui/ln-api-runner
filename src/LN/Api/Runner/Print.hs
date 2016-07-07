@@ -16,22 +16,24 @@ module LN.Api.Runner.Print  (
   printInfoT,
   printInfo,
   printSection,
+  indent
 ) where
 
 
 
-import           Control.Monad.Trans     (MonadTrans, lift)
-import           Data.Monoid             ((<>))
-import           Data.String.Conversions (ConvertibleStrings, cs)
-import           Data.Text               (Text)
-import qualified Data.Text.IO            as TIO (putStrLn)
+import           Control.Monad.State.Lazy (gets)
+import           Control.Monad.Trans      (MonadTrans, lift)
+import           Data.Monoid              ((<>))
+import           Data.String.Conversions  (ConvertibleStrings, cs)
+import           Data.Text                (Text)
+import qualified Data.Text.IO             as TIO (putStrLn)
 import           LN.Api.Runner.Control
 import           LN.Api.Runner.Internal
-import           LN.T.Internal.JSON      ()
-import           Rainbow                 (blue, blue, bold, chunk, cyan, fore,
-                                          green, putChunk, putChunkLn, red,
-                                          white, (&))
-import           System.Exit             (exitFailure)
+import           LN.T.Internal.JSON       ()
+import           Rainbow                  (blue, blue, bold, chunk, cyan, fore,
+                                           green, putChunk, putChunkLn, red,
+                                           white, (&))
+import           System.Exit              (exitFailure)
 
 
 
@@ -43,6 +45,7 @@ printFailT s = lift $ printFail s
 
 printFail :: forall a. ConvertibleStrings a Text => a -> RunnerM ()
 printFail message = do
+  indent
   io $ putChunk $ chunk ("Fail: " :: Text) & fore red & bold
   io $ TIO.putStrLn (cs message)
 
@@ -55,6 +58,7 @@ printActualFailureT s = lift $ printActualFailure s
 
 printActualFailure :: String -> RunnerM ()
 printActualFailure message = do
+  indent
   io $ putChunk $ chunk ("ActualFailure: " :: Text) & fore red & bold
   io $ putChunkLn $ chunk message & fore cyan
 
@@ -62,6 +66,7 @@ printActualFailure message = do
 
 printFatal :: String -> RunnerM ()
 printFatal message = do
+  indent
   io $ putChunk $ chunk ("Fatal: " :: Text) & fore red & bold
   io $ putChunkLn $ chunk message & fore red & bold
   io $ exitFailure
@@ -75,6 +80,7 @@ printPassT s = lift $ printPass s
 
 printPass :: forall a. ConvertibleStrings a Text => a -> RunnerM ()
 printPass message = do
+  indent
   io $ putChunk $ chunk ("Pass: " :: Text) & fore green & bold
   io $ TIO.putStrLn (cs message)
 
@@ -87,6 +93,7 @@ printInfoT s = lift $ printInfo s
 
 printInfo :: String -> RunnerM ()
 printInfo message = do
+  indent
   io $ putChunk $ chunk ("Info: " :: Text) & fore white & bold
   io $ putStrLn message
 
@@ -94,4 +101,12 @@ printInfo message = do
 
 printSection :: String -> RunnerM ()
 printSection message = do
+  indent
   io $ putChunkLn $ chunk ("- " <> message) & fore blue & bold
+
+
+
+indent :: RunnerM ()
+indent = do
+  level <- lift $ gets level
+  io $ putStr $ replicate level ' '

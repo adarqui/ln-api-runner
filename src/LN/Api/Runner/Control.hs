@@ -13,6 +13,8 @@ module LN.Api.Runner.Control (
   defaultRunnerWriter,
   RunnerState (..),
   defaultRunnerState,
+  StackState (..),
+  defaultStackState,
   defaultApiOpts,
   runnerM,
   left,
@@ -98,7 +100,7 @@ defaultApiOpts = ApiOptions {
   apiKey         = Nothing,
   apiKeyHeader   = Just "x-api-authorization",
   apiWreqOptions = defaultWreqOptions,
-  apiDebug       = True
+  apiDebug       = False
 }
 
 

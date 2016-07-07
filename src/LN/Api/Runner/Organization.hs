@@ -71,6 +71,7 @@ removeOrganizations = do
 testCreateOrganization :: RunnerM (Either () ())
 testCreateOrganization = do
 
+  enterM
   printSection "Testing organization creation"
 
   lr <- runEitherT $ do
@@ -84,13 +85,15 @@ testCreateOrganization = do
     mustPassT $ testOrganizationsMembershipOwner org owner
     pure ()
 
-  either (const $ left ()) (const $ right ()) lr
+  leaveM
+  pure lr
 
 
 
 testOrganizations :: RunnerM (Either () ())
 testOrganizations = do
 
+  enterM
   printSection "Testing Organizations"
 
   lr <- runEitherT $ do
@@ -102,16 +105,18 @@ testOrganizations = do
     OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
     pure ()
 
-  either (const $ left ()) (const $ right ()) lr
+  leaveM
+  pure lr
 
 
 
 testOrganizationsMembershipOwner :: OrganizationResponse -> UserResponse -> RunnerM (Either () ())
 testOrganizationsMembershipOwner OrganizationResponse{..} owner@UserResponse{..} = do
 
+  enterM
   printSection "Testing Organization Membership for an Owner"
 
-  runEitherT $ do
+  lr <- runEitherT $ do
     teams <- assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
     let team_responses = teamResponses teams
     void $ assertTrueT "Only 2 teams exist" $ pure (length team_responses == 2)
@@ -132,18 +137,21 @@ testOrganizationsMembershipOwner OrganizationResponse{..} owner@UserResponse{..}
       forM_ my_memberships $ \TeamMemberResponse{..} -> do
         assertT "Owner cannot delete themselves from a team" isLeft $ rd_AsUser owner (deleteTeamMember' teamMemberResponseId)
 
-    pure ()
-
---  either (const $ left ()) (const $ right()) lr
+  leaveM
+  pure lr
 
 
 
 testOrganizationsMembership_OfTeam :: TeamResponse -> UserResponse -> RunnerM (Either () ())
 testOrganizationsMembership_OfTeam TeamResponse{..} UserResponse{..} = do
 
+  enterM
   printSection "Testing membership of an organization"
 
-  runEitherT $ do
+  lr <- runEitherT $ do
 --    team_members <- assertT "TeamMembers exists" isRight $ rd_AsUser user (getTeamMembers_ByTeamId' teamResponseId)
 --    let team_member_responses = teamMemberResponses team_members
     pure ()
+
+  leaveM
+  pure lr

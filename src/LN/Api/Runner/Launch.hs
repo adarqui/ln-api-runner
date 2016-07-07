@@ -33,6 +33,8 @@ launchRunner = do
   go = do
     printInfo "Launching API Runner"
 
+    enterM
+
     testCreateUser >>= either (const $ printFatal "testCreateUser must not fail.") pure
     void $ testCreateInvalidUsers
 
@@ -42,15 +44,19 @@ launchRunner = do
     forM_ [1 .. 5 :: Int] $ const $ do
       testOrganizations >>= either (const $ printFatal "testOrganizations must not fail.") pure
 
+    leaveM
+
     pure ()
 
 
 
 cleanupRunner :: IO ()
 cleanupRunner = do
-  putStrLn "Cleanup"
   runnerM go
   where
   go = do
+    printInfo "Cleanup"
+    enterM
     removeUsers
     removeOrganizations
+    leaveM
