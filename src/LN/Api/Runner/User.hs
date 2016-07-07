@@ -48,7 +48,7 @@ removeUsers = pure ()
 testCreateUser :: RunnerM (Either () ())
 testCreateUser = do
 
-  liftIO $ printSection "Testing user creation"
+  printSection "Testing user creation"
 
   lr <- runEitherT $ do
     user_request <- liftIO buildValidUser
@@ -72,7 +72,7 @@ testCreateUser = do
 testCreateInvalidUsers :: RunnerM (Either () ())
 testCreateInvalidUsers = do
 
-  liftIO $ printSection "Creating invalid users"
+  printSection "Creating invalid users"
 
   lr <- runEitherT $ do
     user <- liftIO buildValidUser

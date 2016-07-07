@@ -10,3 +10,4 @@ import           LN.Api.Runner.Internal     as A ()
 import           LN.Api.Runner.Launch       as A
 import           LN.Api.Runner.Organization as A
 import           LN.Api.Runner.User         as A
+import           LN.Api.Runner.Forum        as A ()

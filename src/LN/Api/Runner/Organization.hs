@@ -71,14 +71,14 @@ removeOrganizations = do
 testCreateOrganization :: RunnerM (Either () ())
 testCreateOrganization = do
 
-  liftIO $ printSection "Testing organization creation"
+  printSection "Testing organization creation"
 
   lr <- runEitherT $ do
     owner_req <- liftIO buildValidUser
     org_req   <- liftIO buildValidOrganization
     owner                        <- assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
     org@OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
-    void $ runEitherT $ assertTrueT "Created organization is owned by owner" $ pure (organizationResponseUserId == (userResponseId owner))
+    void $ assertTrueT "Created organization is owned by owner" $ pure (organizationResponseUserId == (userResponseId owner))
     void $ assertTrueT "Organization is active" $ pure (organizationResponseActive == True)
 
     mustPassT $ testOrganizationsMembershipOwner org owner
@@ -91,7 +91,7 @@ testCreateOrganization = do
 testOrganizations :: RunnerM (Either () ())
 testOrganizations = do
 
-  liftIO $ printSection "Testing Organizations"
+  printSection "Testing Organizations"
 
   lr <- runEitherT $ do
     owner_req <- liftIO buildValidUser
@@ -109,7 +109,7 @@ testOrganizations = do
 testOrganizationsMembershipOwner :: OrganizationResponse -> UserResponse -> RunnerM (Either () ())
 testOrganizationsMembershipOwner OrganizationResponse{..} owner@UserResponse{..} = do
 
-  liftIO $ printSection "Testing Organization Membership for an Owner"
+  printSection "Testing Organization Membership for an Owner"
 
   runEitherT $ do
     teams <- assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
@@ -141,7 +141,7 @@ testOrganizationsMembershipOwner OrganizationResponse{..} owner@UserResponse{..}
 testOrganizationsMembership_OfTeam :: TeamResponse -> UserResponse -> RunnerM (Either () ())
 testOrganizationsMembership_OfTeam TeamResponse{..} UserResponse{..} = do
 
-  liftIO $ printSection "Testing membership of an organization"
+  printSection "Testing membership of an organization"
 
   runEitherT $ do
 --    team_members <- assertT "TeamMembers exists" isRight $ rd_AsUser user (getTeamMembers_ByTeamId' teamResponseId)

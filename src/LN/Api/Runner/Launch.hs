@@ -8,7 +8,6 @@ module LN.Api.Runner.Launch (
 
 import           Control.Concurrent         (forkIO)
 import           Control.Monad              (forM_, forever, void)
-import           Control.Monad.IO.Class     (liftIO)
 import           LN.Api.Runner.Control
 import           LN.Api.Runner.Organization
 import           LN.Api.Runner.Print
@@ -29,19 +28,19 @@ launchRunners n = do
 
 launchRunner :: IO ()
 launchRunner = do
-  printInfo "Launching API Runner"
   runnerM go
-  printInfo "Done"
   where
   go = do
-    testCreateUser >>= either (const $ liftIO (printFatal "testCreateUser must not fail.")) pure
+    printInfo "Launching API Runner"
+
+    testCreateUser >>= either (const $ printFatal "testCreateUser must not fail.") pure
     void $ testCreateInvalidUsers
 
-    testCreateOrganization >>= either (const $ liftIO (printFatal "testCreateOrganization must not fail.")) pure
+    testCreateOrganization >>= either (const $ printFatal "testCreateOrganization must not fail.") pure
     void $ testCreateInvalidOrganizations
 
     forM_ [1 .. 5 :: Int] $ const $ do
-      testOrganizations >>= either (const $ liftIO (printFatal "testOrganizations must not fail.")) pure
+      testOrganizations >>= either (const $ printFatal "testOrganizations must not fail.") pure
 
     pure ()
 
