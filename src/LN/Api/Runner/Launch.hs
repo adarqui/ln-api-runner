@@ -6,8 +6,7 @@ module LN.Api.Runner.Launch (
 
 
 
-import           Control.Concurrent         (forkIO)
-import           Control.Monad              (forM_, forever, void)
+import           Control.Monad              (forM_, void)
 import           LN.Api.Runner.Control
 import           LN.Api.Runner.Organization
 import           LN.Api.Runner.Print
@@ -15,14 +14,11 @@ import           LN.Api.Runner.User
 
 
 
--- | DONT USE THIS, WILL BREAK YOUR TERMINAL
---
--- NEED CENTRALIZED LOGGING FUNCTION TO HANDLE TERMINAL PROPERLY
+-- | Can't multi-thread this because of the terminal operations/output
 --
 launchRunners :: Int -> IO ()
 launchRunners n = do
-  forM_ [1..n] $ const $ forkIO launchRunner
-  forever $ getLine
+  forM_ [1..n] $ const launchRunner
 
 
 
