@@ -40,6 +40,7 @@ launchRunner = do
       testOrganizations >>= either (const $ printFatal "testOrganizations must not fail.") pure
 
     leaveM
+    printStats
     pure ()
 
 

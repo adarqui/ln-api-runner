@@ -22,13 +22,18 @@ module LN.Api.Runner.Control (
   leftT,
   rightT,
   enterM,
-  leaveM
+  leaveM,
+  incPass,
+  incFail,
+  incWarning,
+  incFatal,
+  incSection
 ) where
 
 
 
 import           Control.Monad              (void)
-import           Control.Monad.State.Lazy   (get, put)
+import           Control.Monad.State.Lazy   (get, modify, put)
 import           Control.Monad.StateStack   (StateStackT, restore,
                                              runStateStackT, save)
 import           Control.Monad.Trans        (lift)
@@ -78,16 +83,26 @@ defaultRunnerWriter = ()
 
 
 data RunnerState = RunnerState {
-  orgs  :: M.Map Text OrganizationPackResponse,
-  users :: M.Map Text UserSanitizedPackResponse,
-  keys  :: M.Map Text ApiResponse
+  orgs        :: M.Map Text OrganizationPackResponse,
+  users       :: M.Map Text UserSanitizedPackResponse,
+  keys        :: M.Map Text ApiResponse,
+  statPass    :: Int,
+  statWarning :: Int,
+  statFail    :: Int,
+  statFatal   :: Int,
+  statSection :: Int
 }
 
 defaultRunnerState :: RunnerState
 defaultRunnerState = RunnerState {
-  orgs = M.empty,
-  users = M.empty,
-  keys = M.empty
+  orgs        = M.empty,
+  users       = M.empty,
+  keys        = M.empty,
+  statPass    = 0,
+  statWarning = 0,
+  statFail    = 0,
+  statFatal   = 0,
+  statSection = 0
 }
 
 
@@ -142,3 +157,28 @@ enterM = do
 
 leaveM :: RunnerM ()
 leaveM = lift restore
+
+
+
+incPass :: RunnerM ()
+incPass = modify (\st -> st { statPass = (statPass st) + 1 })
+
+
+
+incWarning :: RunnerM ()
+incWarning = modify (\st -> st { statWarning = (statWarning st) + 1 })
+
+
+
+incFail :: RunnerM ()
+incFail = modify (\st -> st { statFail = (statFail st) + 1 })
+
+
+
+incFatal :: RunnerM ()
+incFatal = modify (\st -> st { statFatal = (statFatal st) + 1 })
+
+
+
+incSection :: RunnerM ()
+incSection = modify (\st -> st { statSection = (statSection st) + 1 })
