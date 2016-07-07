@@ -35,7 +35,7 @@ launchRunner = do
   where
   go = do
     testCreateUser >>= either (const $ liftIO (printFatal "testCreateUser must not fail.")) pure
-    testCreateInvaidUsers
+    testCreateInvalidUsers
 
     testCreateOrganization >>= either (const $ liftIO (printFatal "testCreateOrganization must not fail.")) pure
     testCreateInvalidOrganizations

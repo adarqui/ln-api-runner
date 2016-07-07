@@ -1,64 +1,31 @@
-{-# LANGUAGE ExplicitForAll        #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
-module LN.Api.Runner.User where
+module LN.Api.Runner.User (
+  createUsers,
+  removeUsers,
+  testCreateUser,
+  testCreateInvalidUsers
+) where
 
 
-import LN.Api.Runner.Api
-import LN.Api.Runner.Print
-import LN.Api.Runner.Assert
-import LN.Api.Runner.Control
-
-import           LN.Api
-import LN.Generate
-import LN.T.Error (ApplicationError(..), ValidationError(..), ValidationErrorCode(..))
-import LN.T.User.Request (UserRequest(..))
-import LN.T.User.Response (UserResponse(..))
-
--- import           Control.Break              (break, loop)
--- import           Control.Concurrent         (forkIO, threadDelay)
--- import           Control.Exception
-import           Control.Monad              (void, forever)
--- import           Control.Monad
--- import           Control.Monad.Except
+import           Control.Monad              (forever, void)
 import           Control.Monad.IO.Class     (liftIO)
 import           Control.Monad.Trans.Either (EitherT, runEitherT)
--- import qualified Control.Monad.Trans.Either as Either
--- import           Control.Monad.Trans.Reader (ReaderT)
--- import qualified Control.Monad.Trans.Reader as Reader (asks)
--- import           Control.Monad.Trans.RWS    (RWST, asks, evalRWST, get, modify,
---                                              put)
--- import           Control.Monad.Trans.State  (StateT, evalStateT, runStateT)
--- import qualified Control.Monad.Trans.State  as State (get, modify, put)
--- import           Data.ByteString            (ByteString)
 import           Data.Either                (Either (..), isLeft, isRight)
--- import           Data.Int                   (Int64)
--- import           Data.List                  (find)
--- import qualified Data.Map                   as M
--- import           Data.Monoid                ((<>))
--- import           Data.Rehtie
--- import           Data.String.Conversions
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T (replicate)
--- import           Data.Text.Arbitrary
--- import qualified Data.Text.IO               as TIO
--- import           Haskell.Api.Helpers
--- import           LN.Generate
--- import           LN.Sanitize
--- import           LN.T
--- import           LN.T.Error                 (ApplicationError (..),
---                                              ValidationError (..),
---                                              ValidationErrorCode (..))
--- import           LN.Validate
--- import           Prelude                    hiding (break)
--- import           Rainbow
--- import           System.Exit                (exitFailure)
--- import           Test.QuickCheck
--- import           Test.QuickCheck.Utf8
+import           LN.Api
+import           LN.Api.Runner.Api
+import           LN.Api.Runner.Assert
+import           LN.Api.Runner.Control
+import           LN.Api.Runner.Print
+import           LN.Generate
+import           LN.T.Error                 (ApplicationError (..),
+                                             ValidationError (..),
+                                             ValidationErrorCode (..))
+import           LN.T.User.Request          (UserRequest (..))
+import           LN.T.User.Response         (UserResponse (..))
 
 
 
@@ -103,8 +70,8 @@ testCreateUser = do
 -- User creation via this api call can only happen in "GOD MODE" anyway..
 -- User creation via the api is used by ln-api-runner & ln-smf-migrate
 --
-testCreateInvaidUsers :: RunnerM (Either () ())
-testCreateInvaidUsers = do
+testCreateInvalidUsers :: RunnerM (Either () ())
+testCreateInvalidUsers = do
 
   liftIO $ printSection "Creating invalid users"
 
