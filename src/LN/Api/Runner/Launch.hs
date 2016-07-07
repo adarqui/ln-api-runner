@@ -32,7 +32,6 @@ launchRunner = do
   where
   go = do
     printInfo "Launching API Runner"
-
     enterM
 
     testCreateUser >>= either (const $ printFatal "testCreateUser must not fail.") pure
@@ -45,7 +44,6 @@ launchRunner = do
       testOrganizations >>= either (const $ printFatal "testOrganizations must not fail.") pure
 
     leaveM
-
     pure ()
 
 

@@ -48,6 +48,7 @@ removeUsers = pure ()
 testCreateUser :: RunnerM (Either () ())
 testCreateUser = do
 
+  enterM
   printSection "Testing user creation"
 
   lr <- runEitherT $ do
@@ -61,7 +62,8 @@ testCreateUser = do
       rd_AsUserId userResponseId getApis'
     pure ()
 
-  either (const $ left ()) (const $ right ()) lr
+  leaveM
+  pure lr
 
 
 
@@ -72,6 +74,7 @@ testCreateUser = do
 testCreateInvalidUsers :: RunnerM (Either () ())
 testCreateInvalidUsers = do
 
+  enterM
   printSection "Creating invalid users"
 
   lr <- runEitherT $ do
@@ -95,6 +98,5 @@ testCreateInvalidUsers = do
     void $ assertFail_ValidateT "display_name > maxDisplayName = error" (Validate Validate_TooLong $ Just "display_name") $
       rd_Super (postUser' $ user { userRequestDisplayName = T.replicate 33 "A" })
 
-    pure ()
-
-  either (const $ left ()) (const $ right ()) lr
+  leaveM
+  pure lr

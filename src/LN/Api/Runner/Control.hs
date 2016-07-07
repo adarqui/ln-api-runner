@@ -28,7 +28,6 @@ module LN.Api.Runner.Control (
 
 
 import           Control.Monad              (void)
-import           Control.Monad.IO.Class     ()
 import           Control.Monad.State.Lazy   (get, put)
 import           Control.Monad.StateStack   (StateStackT, restore,
                                              runStateStackT, save)
@@ -135,14 +134,11 @@ rightT = Either.right
 
 enterM :: RunnerM ()
 enterM = do
+  lift save
   StackState{..} <- lift $ get
   lift $ put $ StackState (level+1)
-  lift save
 
 
 
 leaveM :: RunnerM ()
-leaveM = do
-  StackState{..} <- lift get
-  lift $ put $ StackState (level-1)
-  lift restore
+leaveM = lift restore
