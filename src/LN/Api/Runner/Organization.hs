@@ -5,6 +5,7 @@ module LN.Api.Runner.Organization (
   testCreateOrganization,
   testCreateInvalidOrganizations,
   testOrganizations,
+  createOrganization,
   createOrganizations,
   removeOrganizations
 ) where
@@ -13,10 +14,8 @@ module LN.Api.Runner.Organization (
 
 import           Control.Monad              (forM_, void)
 import           Control.Monad.IO.Class     (liftIO)
-import           Control.Monad.Trans.Either (EitherT, runEitherT)
-import           Control.Monad.Trans.RWS    (RWST, asks, evalRWST, get, modify,
-                                             put)
-import           Data.Either                (Either (..), isLeft, isRight)
+import           Control.Monad.Trans.Either (runEitherT)
+import           Data.Either                (isLeft, isRight)
 import           Data.List                  (find)
 import           LN.Api
 import           LN.Api.Runner.Api
@@ -38,10 +37,8 @@ import           LN.T.User.Response         (UserResponse (..))
 testCreateInvalidOrganizations :: RunnerM (Either () ())
 testCreateInvalidOrganizations = do
   runEitherT $ do
-    user <- liftIO buildValidUser
+    _ <- liftIO buildValidUser
     pure ()
---    api  <- liftIO $ rd (postApi' $ ApiRequest (Just "comment) 0)
-
 
 
 
