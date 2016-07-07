@@ -6,7 +6,7 @@ module LN.Api.Runner.Launch (
 
 
 
-import           Control.Concurrent         (forkIO, threadDelay)
+import           Control.Concurrent         (forkIO)
 import           Control.Monad              (forM_, forever, void)
 import           Control.Monad.IO.Class     (liftIO)
 import           LN.Api.Runner.Control
@@ -35,12 +35,12 @@ launchRunner = do
   where
   go = do
     testCreateUser >>= either (const $ liftIO (printFatal "testCreateUser must not fail.")) pure
-    testCreateInvalidUsers
+    void $ testCreateInvalidUsers
 
     testCreateOrganization >>= either (const $ liftIO (printFatal "testCreateOrganization must not fail.")) pure
-    testCreateInvalidOrganizations
+    void $ testCreateInvalidOrganizations
 
-    forM_ [1..5] $ const $ do
+    forM_ [1 .. 5 :: Int] $ const $ do
       testOrganizations >>= either (const $ liftIO (printFatal "testOrganizations must not fail.")) pure
 
     pure ()
