@@ -3,9 +3,17 @@
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
 
-module LN.Api.Runner.Assert where
+module LN.Api.Runner.Assert (
+  _assertTrueT,
+  _assertFalseT,
+  _assertBoolT,
+  _assertT,
+  _assertRetryT,
+  _assertFail_ValidateT,
+  _assertFail_ServerErrorT,
+  _mustPassT
+) where
 
 
 
@@ -18,8 +26,7 @@ import           Haskell.Api.Helpers        (ApiError (..))
 import           LN.Api.Runner.Control
 import           LN.Api.Runner.Print
 import           LN.T.Error                 (ApplicationError (..),
-                                             ValidationError (..),
-                                             ValidationErrorCode (..))
+                                             ValidationError (..))
 
 
 
@@ -69,7 +76,7 @@ _assertT message test go = do
     else do
       liftIO $ printFail message
   case lr of
-    Left l  -> if test lr then _rightT undefined else _leftT ()
+    Left _  -> if test lr then _rightT undefined else _leftT ()
     Right r -> if test lr then _rightT r else _leftT ()
 
 
@@ -88,11 +95,11 @@ _assertRetryT retries message test go = do
   lr <- lift $ runEitherT $ do
     _assertT message test go
   case lr of
-    Left err -> do
+    Left _  -> do
       if retries == 0
         then liftIO (printActualFailure "Maximum retries attempted.") *> _leftT ()
         else _assertRetryT (retries-1) message test go
-    Right v  -> _rightT v
+    Right v -> _rightT v
 
 
 
@@ -119,7 +126,7 @@ _assertFail_ValidateT message criteria go = do
       liftIO $ printFail message
       liftIO $ printActualFailure (show err)
       _leftT ()
-    Right v  -> do
+    Right _  -> do
       liftIO $ printFail message
       _leftT ()
 
@@ -147,7 +154,7 @@ _assertFail_ServerErrorT message criteria go = do
       liftIO $ printFail message
       liftIO $ printActualFailure (show err)
       _leftT ()
-    Right v  -> do
+    Right _  -> do
       liftIO $ printFail message
       _leftT ()
 
@@ -157,5 +164,5 @@ _mustPassT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.Eith
 _mustPassT go = do
   x <- lift go
   case x of
-    Left err -> _leftT ()
-    Right v  -> _rightT v
+    Left _  -> _leftT ()
+    Right v -> _rightT v
