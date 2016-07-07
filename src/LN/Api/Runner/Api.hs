@@ -16,8 +16,7 @@ module LN.Api.Runner.Api (
 
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Trans.Reader (ReaderT)
-import           Control.Monad.Trans.RWS    (RWST, asks, evalRWST, get, modify,
-                                             put)
+import           Control.Monad.Trans.RWS    (RWST, asks)
 import           Data.ByteString            (ByteString)
 import           Data.Int                   (Int64)
 import           Data.Monoid                ((<>))

@@ -52,12 +52,12 @@ testCreateUser = do
 
   lr <- runEitherT $ do
     user_request <- liftIO buildValidUser
-    UserResponse{..} <- _assertT "A valid user is created" isRight $
+    UserResponse{..} <- assertT "A valid user is created" isRight $
       rd_Super (postUser' user_request)
-    void $ _assertTrueT "User is active" $ pure (userResponseActive == True)
-    void $ _assertRetryT 5 "After a user is created, a profile is subsequently created" isRight $
+    void $ assertTrueT "User is active" $ pure (userResponseActive == True)
+    void $ assertRetryT 5 "After a user is created, a profile is subsequently created" isRight $
       rd_Super (getUserProfiles_ByUserId' userResponseId)
-    void $ _assertRetryT 5 "After a user is created, an api entry is subsequently created" isRight $
+    void $ assertRetryT 5 "After a user is created, an api entry is subsequently created" isRight $
       rd_AsUserId userResponseId getApis'
     pure ()
 
@@ -77,22 +77,22 @@ testCreateInvalidUsers = do
   lr <- runEitherT $ do
     user <- liftIO buildValidUser
 
-    void $ _assertFail_ValidateT "Empty display_name = error" (Validate Validate_CannotBeEmpty $ Just "display_name") $
+    void $ assertFail_ValidateT "Empty display_name = error" (Validate Validate_CannotBeEmpty $ Just "display_name") $
       rd_Super (postUser' $ user { userRequestDisplayName = "" })
 
-    void $ _assertFail_ValidateT "Empty full_name = error" (Validate Validate_CannotBeEmpty $ Just "full_name") $
+    void $ assertFail_ValidateT "Empty full_name = error" (Validate Validate_CannotBeEmpty $ Just "full_name") $
       rd_Super (postUser' $ user { userRequestFullName = "" })
 
-    void $ _assertFail_ValidateT "Empty email = error" (Validate Validate_CannotBeEmpty $ Just "email") $
+    void $ assertFail_ValidateT "Empty email = error" (Validate Validate_CannotBeEmpty $ Just "email") $
       rd_Super (postUser' $ user { userRequestEmail = "" })
 
-    void $ _assertFail_ValidateT "Empty plugin = error" (Validate Validate_CannotBeEmpty $ Just "plugin") $
+    void $ assertFail_ValidateT "Empty plugin = error" (Validate Validate_CannotBeEmpty $ Just "plugin") $
       rd_Super (postUser' $ user { userRequestPlugin = "" })
 
-    void $ _assertFail_ValidateT "Empty ident = error" (Validate Validate_CannotBeEmpty $ Just "ident") $
+    void $ assertFail_ValidateT "Empty ident = error" (Validate Validate_CannotBeEmpty $ Just "ident") $
       rd_Super (postUser' $ user { userRequestIdent = "" })
 
-    void $ _assertFail_ValidateT "display_name > maxDisplayName = error" (Validate Validate_TooLong $ Just "display_name") $
+    void $ assertFail_ValidateT "display_name > maxDisplayName = error" (Validate Validate_TooLong $ Just "display_name") $
       rd_Super (postUser' $ user { userRequestDisplayName = T.replicate 33 "A" })
 
     pure ()

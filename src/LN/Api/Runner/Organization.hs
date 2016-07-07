@@ -76,12 +76,12 @@ testCreateOrganization = do
   lr <- runEitherT $ do
     owner_req <- liftIO buildValidUser
     org_req   <- liftIO buildValidOrganization
-    owner                        <- _assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
-    org@OrganizationResponse{..} <- _assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
-    void $ runEitherT $ _assertTrueT "Created organization is owned by owner" $ pure (organizationResponseUserId == (userResponseId owner))
-    void $ _assertTrueT "Organization is active" $ pure (organizationResponseActive == True)
+    owner                        <- assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
+    org@OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
+    void $ runEitherT $ assertTrueT "Created organization is owned by owner" $ pure (organizationResponseUserId == (userResponseId owner))
+    void $ assertTrueT "Organization is active" $ pure (organizationResponseActive == True)
 
-    _mustPassT $ testOrganizationsMembershipOwner org owner
+    mustPassT $ testOrganizationsMembershipOwner org owner
     pure ()
 
   either (const $ left ()) (const $ right ()) lr
@@ -97,9 +97,9 @@ testOrganizations = do
     owner_req <- liftIO buildValidUser
     user_req  <- liftIO buildValidUser
     org_req   <- liftIO buildValidOrganization
-    owner                    <- _assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
-    _                        <- _assertT "A user is created" isRight $ rd_Super (postUser' user_req)
-    OrganizationResponse{..} <- _assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
+    owner                    <- assertT "An owner is created" isRight $ rd_Super (postUser' owner_req)
+    _                        <- assertT "A user is created" isRight $ rd_Super (postUser' user_req)
+    OrganizationResponse{..} <- assertT "An organization is created" isRight $ rd_AsUser owner (postOrganization' org_req)
     pure ()
 
   either (const $ left ()) (const $ right ()) lr
@@ -112,25 +112,25 @@ testOrganizationsMembershipOwner OrganizationResponse{..} owner@UserResponse{..}
   liftIO $ printSection "Testing Organization Membership for an Owner"
 
   runEitherT $ do
-    teams <- _assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
+    teams <- assertT "Teams exist" isRight $ rd_AsUser owner (getTeams_ByOrganizationId' organizationResponseId)
     let team_responses = teamResponses teams
-    void $ _assertTrueT "Only 2 teams exist" $ pure (length team_responses == 2)
-    void $ _assertTrueT "Team_Owners exists" $ pure (elem Team_Owners $ map teamResponseSystem team_responses)
-    void $ _assertTrueT "Team_Members exists" $ pure (elem Team_Members $ map teamResponseSystem team_responses)
+    void $ assertTrueT "Only 2 teams exist" $ pure (length team_responses == 2)
+    void $ assertTrueT "Team_Owners exists" $ pure (elem Team_Owners $ map teamResponseSystem team_responses)
+    void $ assertTrueT "Team_Members exists" $ pure (elem Team_Members $ map teamResponseSystem team_responses)
 
-    forM_ team_responses $ \team -> _mustPassT $ testOrganizationsMembership_OfTeam team owner
-
-    forM_ team_responses $ \TeamResponse{..} -> do
-      void $ _assertT "Cannot delete teams" isLeft $ rd_AsUser owner (deleteTeam' teamResponseId)
+    forM_ team_responses $ \team -> mustPassT $ testOrganizationsMembership_OfTeam team owner
 
     forM_ team_responses $ \TeamResponse{..} -> do
-      team_members <- _assertT "Team has members" isRight $ rd_AsUser owner (getTeamMembers_ByTeamId' teamResponseId)
+      void $ assertT "Cannot delete teams" isLeft $ rd_AsUser owner (deleteTeam' teamResponseId)
+
+    forM_ team_responses $ \TeamResponse{..} -> do
+      team_members <- assertT "Team has members" isRight $ rd_AsUser owner (getTeamMembers_ByTeamId' teamResponseId)
       let team_member_responses = teamMemberResponses team_members
-      void $ _assertTrueT "Owner is a member of this team" $ pure $ (find (\TeamMemberResponse{..} -> teamMemberResponseUserId == userResponseId) team_member_responses) /= Nothing
+      void $ assertTrueT "Owner is a member of this team" $ pure $ (find (\TeamMemberResponse{..} -> teamMemberResponseUserId == userResponseId) team_member_responses) /= Nothing
 
       let my_memberships = filter (\TeamMemberResponse{..} -> teamMemberResponseUserId == userResponseId) team_member_responses
       forM_ my_memberships $ \TeamMemberResponse{..} -> do
-        _assertT "Owner cannot delete themselves from a team" isLeft $ rd_AsUser owner (deleteTeamMember' teamMemberResponseId)
+        assertT "Owner cannot delete themselves from a team" isLeft $ rd_AsUser owner (deleteTeamMember' teamMemberResponseId)
 
     pure ()
 
@@ -144,6 +144,6 @@ testOrganizationsMembership_OfTeam TeamResponse{..} UserResponse{..} = do
   liftIO $ printSection "Testing membership of an organization"
 
   runEitherT $ do
---    team_members <- _assertT "TeamMembers exists" isRight $ rd_AsUser user (getTeamMembers_ByTeamId' teamResponseId)
+--    team_members <- assertT "TeamMembers exists" isRight $ rd_AsUser user (getTeamMembers_ByTeamId' teamResponseId)
 --    let team_member_responses = teamMemberResponses team_members
     pure ()

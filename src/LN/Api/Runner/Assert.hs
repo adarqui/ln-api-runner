@@ -5,14 +5,14 @@
 {-# LANGUAGE OverloadedStrings     #-}
 
 module LN.Api.Runner.Assert (
-  _assertTrueT,
-  _assertFalseT,
-  _assertBoolT,
-  _assertT,
-  _assertRetryT,
-  _assertFail_ValidateT,
-  _assertFail_ServerErrorT,
-  _mustPassT
+  assertTrueT,
+  assertFalseT,
+  assertBoolT,
+  assertT,
+  assertRetryT,
+  assertFail_ValidateT,
+  assertFail_ServerErrorT,
+  mustPassT
 ) where
 
 
@@ -30,89 +30,89 @@ import           LN.T.Error                 (ApplicationError (..),
 
 
 
-_assertTrueT
+assertTrueT
   :: (Monad m, MonadIO m)
   => Text
   -> m Bool
   -> EitherT () m Bool
-_assertTrueT message go = _assertBoolT message True go
+assertTrueT message go = assertBoolT message True go
 
 
 
-_assertFalseT
+assertFalseT
   :: (Monad m, MonadIO m)
   => Text
   -> m Bool
   -> EitherT () m Bool
-_assertFalseT message go = _assertBoolT message False go
+assertFalseT message go = assertBoolT message False go
 
 
 
-_assertBoolT
+assertBoolT
   :: (Monad m, MonadIO m)
   => Text
   -> Bool
   -> m Bool
   -> EitherT () m Bool
-_assertBoolT message b go = do
+assertBoolT message b go = do
   result <- lift go
   if result == b
-    then (liftIO $ printPass message) *> _rightT True
-    else (liftIO $ printFail message) *> _leftT ()
+    then (liftIO $ printPass message) *> rightT True
+    else (liftIO $ printFail message) *> leftT ()
 
 
 
-_assertT
+assertT
   :: (Monad m, MonadIO m)
   => Text
   -> (Either e a -> Bool)
   -> m (Either e a)
   -> EitherT () m a
-_assertT message test go = do
+assertT message test go = do
   lr <- lift go
   if test lr
     then do
-      (liftIO $ printPass message) *> _rightT ()
+      (liftIO $ printPass message) *> rightT ()
     else do
       liftIO $ printFail message
   case lr of
-    Left _  -> if test lr then _rightT undefined else _leftT ()
-    Right r -> if test lr then _rightT r else _leftT ()
+    Left _  -> if test lr then rightT undefined else leftT ()
+    Right r -> if test lr then rightT r else leftT ()
 
 
 
 -- | Retry `retries` times until a success
 --
-_assertRetryT
+assertRetryT
   :: (Monad m, MonadIO m)
   => Int
   -> Text
   -> (Either e a -> Bool)
   -> m (Either e a)
   -> EitherT () m a
-_assertRetryT retries message test go = do
+assertRetryT retries message test go = do
 
   lr <- lift $ runEitherT $ do
-    _assertT message test go
+    assertT message test go
   case lr of
     Left _  -> do
       if retries == 0
-        then liftIO (printActualFailure "Maximum retries attempted.") *> _leftT ()
-        else _assertRetryT (retries-1) message test go
-    Right v -> _rightT v
+        then liftIO (printActualFailure "Maximum retries attempted.") *> leftT ()
+        else assertRetryT (retries-1) message test go
+    Right v -> rightT v
 
 
 
 -- | An assertion for Failure.
 -- `go` must fail with Left _, in order for this test to Pass
 --
-_assertFail_ValidateT
+assertFail_ValidateT
   :: (Monad m, MonadIO m)
   => Text
   -> ValidationError
   -> m (Either (ApiError ApplicationError) e)
   -> EitherT () m ()
-_assertFail_ValidateT message criteria go = do
+assertFail_ValidateT message criteria go = do
   x <- lift go
   case x of
     Left (ServerError _ (Error_Validation error_validation)) -> do
@@ -120,27 +120,27 @@ _assertFail_ValidateT message criteria go = do
         then do
           liftIO $ printFail message
           liftIO $ printActualFailure (show error_validation)
-          _leftT ()
-        else (liftIO $ printPass message) *> _rightT ()
+          leftT ()
+        else (liftIO $ printPass message) *> rightT ()
     Left err -> do
       liftIO $ printFail message
       liftIO $ printActualFailure (show err)
-      _leftT ()
+      leftT ()
     Right _  -> do
       liftIO $ printFail message
-      _leftT ()
+      leftT ()
 
 
 
 -- | TODO CLEANUP : HACKING IT UP
 --
-_assertFail_ServerErrorT
+assertFail_ServerErrorT
   :: (Monad m, MonadIO m)
   => Text
   -> ApplicationError
   -> m (Either (ApiError ApplicationError) e)
   -> EitherT () m ()
-_assertFail_ServerErrorT message criteria go = do
+assertFail_ServerErrorT message criteria go = do
   x <- lift go
   case x of
     Left (ServerError _ application_error) -> do
@@ -148,21 +148,21 @@ _assertFail_ServerErrorT message criteria go = do
         then do
           liftIO $ printFail message
           liftIO $ printActualFailure (show application_error)
-          _leftT ()
-        else (liftIO $ printPass message) *> _rightT ()
+          leftT ()
+        else (liftIO $ printPass message) *> rightT ()
     Left err -> do
       liftIO $ printFail message
       liftIO $ printActualFailure (show err)
-      _leftT ()
+      leftT ()
     Right _  -> do
       liftIO $ printFail message
-      _leftT ()
+      leftT ()
 
 
 
-_mustPassT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT () m b
-_mustPassT go = do
+mustPassT :: forall b (m :: * -> *) e. Monad m => m (Either e b) -> Either.EitherT () m b
+mustPassT go = do
   x <- lift go
   case x of
-    Left _  -> _leftT ()
-    Right v -> _rightT v
+    Left _  -> leftT ()
+    Right v -> rightT v

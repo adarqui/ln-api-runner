@@ -16,8 +16,8 @@ module LN.Api.Runner.Control (
   runnerM,
   left,
   right,
-  _leftT,
-  _rightT
+  leftT,
+  rightT
 ) where
 
 
@@ -25,8 +25,7 @@ module LN.Api.Runner.Control (
 import           Control.Monad              (void)
 import           Control.Monad.IO.Class     ()
 import qualified Control.Monad.Trans.Either as Either
-import           Control.Monad.Trans.RWS    (RWST, asks, evalRWST, get, modify,
-                                             put)
+import           Control.Monad.Trans.RWS    (RWST, evalRWST)
 import qualified Data.Map                   as M
 import           Data.Text                  (Text)
 import           Haskell.Api.Helpers        (ApiOptions (..),
@@ -65,6 +64,7 @@ data RunnerState = RunnerState {
   keys  :: M.Map Text ApiResponse
 }
 
+defaultRunnerState :: RunnerState
 defaultRunnerState = RunnerState {
   orgs = M.empty,
   users = M.empty,
@@ -103,10 +103,10 @@ right = pure . Right
 
 
 
-_leftT :: forall e (m :: * -> *) a. Monad m => e -> Either.EitherT () m a
-_leftT _ = Either.left ()
+leftT :: forall (m :: * -> *) a e. Monad m => e -> Either.EitherT () m a
+leftT _ = Either.left ()
 
 
 
-_rightT :: forall a e (m :: * -> *). Monad m => a -> Either.EitherT () m a
-_rightT = Either.right
+rightT :: forall a (m :: * -> *). Monad m => a -> Either.EitherT () m a
+rightT = Either.right
