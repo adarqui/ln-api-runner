@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module LN.Api.Runner.Print  (
   printFailT,
@@ -32,10 +33,9 @@ import           Data.Text                (Text)
 import qualified Data.Text.IO             as TIO (putStrLn)
 import           LN.Api.Runner.Control
 import           LN.Api.Runner.Internal
-import           LN.T.Internal.JSON       ()
 import           Rainbow                  (blue, blue, bold, chunk, cyan, fore,
-                                           green, putChunk, putChunkLn, yellow, red,
-                                           white, (&))
+                                           green, putChunk, putChunkLn, red,
+                                           white, yellow, (&))
 import           System.Exit              (exitFailure)
 
 

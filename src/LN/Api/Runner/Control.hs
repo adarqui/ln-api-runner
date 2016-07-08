@@ -43,7 +43,7 @@ import qualified Data.Map                   as M
 import           Data.Text                  (Text)
 import           Haskell.Api.Helpers        (ApiOptions (..),
                                              defaultWreqOptions)
-import           LN.T.Api.Response          (ApiResponse)
+import           LN.T.Api                   (ApiResponse)
 import           LN.T.Pack.Organization     (OrganizationPackResponse)
 import           LN.T.Pack.Sanitized.User   (UserSanitizedPackResponse)
 

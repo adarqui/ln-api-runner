@@ -37,10 +37,10 @@ resolver: lts-6.4
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
-- '../ln-types'
 - '../ln-api'
 - '../ln-sanitize'
 - '../ln-validate'
+- '../haskell-ln-types'
 - '../haskell-api-helpers'
 - '../haskell-ifte'
 - '../haskell-rehtie'

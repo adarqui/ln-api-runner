@@ -23,8 +23,8 @@ import           LN.Api.Runner.Print
 import           LN.Generate
 import           LN.T.Error                 (ValidationError (..),
                                              ValidationErrorCode (..))
-import           LN.T.User.Request          (UserRequest (..))
-import           LN.T.User.Response         (UserResponse (..))
+import           LN.T.User                  (UserRequest (..),
+                                             UserResponse (..))
 
 
 

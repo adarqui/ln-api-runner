@@ -44,9 +44,9 @@ library
                      , text-icu
                      , text-regex-replace
                      , ln-api
-                     , ln-types
                      , ln-validate
                      , ln-sanitize
+                     , haskell-ln-types
                      , haskell-api-helpers
                      , haskell-rehtie
   ghc-options:         -Wall -Werror

@@ -23,14 +23,14 @@ import           LN.Api.Runner.Assert
 import           LN.Api.Runner.Control
 import           LN.Api.Runner.Print
 import           LN.Generate
-import           LN.T.Organization.Request  (OrganizationRequest (..))
-import           LN.T.Organization.Response (OrganizationResponse (..))
+import           LN.T.Organization          (OrganizationRequest (..),
+                                             OrganizationResponse (..))
 import           LN.T.Team                  (SystemTeam (..))
-import           LN.T.Team.Response         (TeamResponse (..),
+import           LN.T.Team                  (TeamResponse (..),
                                              TeamResponses (..))
-import           LN.T.TeamMember.Response   (TeamMemberResponse (..),
+import           LN.T.TeamMember            (TeamMemberResponse (..),
                                              TeamMemberResponses (..))
-import           LN.T.User.Response         (UserResponse (..))
+import           LN.T.User                  (UserResponse (..))
 
 
 
