@@ -21,7 +21,7 @@ import           Control.Monad.Trans        (lift)
 import           Control.Monad.Trans.Either (EitherT, runEitherT)
 import qualified Control.Monad.Trans.Either as Either
 import           Data.Text                  (Text)
-import           Haskell.Api.Helpers        (ApiError (..))
+import           Haskell.Api.Helpers.Shared (ApiError (..))
 import           LN.Api.Runner.Control
 import           LN.Api.Runner.Print
 import           LN.T.Error                 (ApplicationError (..),

@@ -46,6 +46,7 @@ library
                      , ln-sanitize
                      , haskell-ln-types
                      , haskell-api-helpers
+                     , haskell-api-helpers-shared
                      , haskell-rehtie
   ghc-options:         -Wall -Werror
   default-language:    Haskell2010

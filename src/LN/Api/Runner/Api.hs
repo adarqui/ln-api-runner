@@ -21,7 +21,8 @@ import           Data.ByteString            (ByteString)
 import           Data.Int                   (Int64)
 import           Data.Monoid                ((<>))
 import           Data.String.Conversions    (cs)
-import           Haskell.Api.Helpers        (ApiError (..), ApiOptions (..),
+import           Haskell.Api.Helpers        (SpecificApiOptions)
+import           Haskell.Api.Helpers.Shared (ApiError (..), ApiOptions (..),
                                              runWith)
 import           LN.Api.Runner.Control
 import           LN.T                       (UserResponse (..))
@@ -35,7 +36,7 @@ superKey = "pooppooppooppooppooppooppooppooppooppooppooppooppooppooppooppooppoop
 
 rd_Super
   :: (Monoid w, MonadIO m)
-  => ReaderT ApiOptions IO (Either (ApiError b) a)
+  => ReaderT (ApiOptions SpecificApiOptions) IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd_Super = rd_Api superKey
 
@@ -44,7 +45,7 @@ rd_Super = rd_Api superKey
 rd_AsApiKey
   :: (Monoid w, MonadIO m)
   => ByteString
-  -> ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> ReaderT (ApiOptions SpecificApiOptions) IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd_AsApiKey = rd_Api
 
@@ -53,7 +54,7 @@ rd_AsApiKey = rd_Api
 rd_Api
   :: (Monoid w, MonadIO m)
   => ByteString
-  -> ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> ReaderT (ApiOptions SpecificApiOptions) IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd_Api api_key actions = do
   opts <- asks rApiOpts
@@ -64,7 +65,7 @@ rd_Api api_key actions = do
 rd_AsUser
   :: (Monoid w, MonadIO m, Show a, Show b)
   => UserResponse
-  -> ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> ReaderT (ApiOptions SpecificApiOptions) IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd_AsUser UserResponse{..} = rd_AsUserId userResponseId
 
@@ -73,7 +74,7 @@ rd_AsUser UserResponse{..} = rd_AsUserId userResponseId
 rd_AsUserId
   :: (Monoid w, MonadIO m, Show b, Show a)
   => Int64
-  -> ReaderT ApiOptions IO (Either (ApiError b) a)
+  -> ReaderT (ApiOptions SpecificApiOptions) IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd_AsUserId user_id actions = do
   opts <- asks rApiOpts
@@ -85,7 +86,7 @@ rd_AsUserId user_id actions = do
 
 rd_Guest
   :: (Monoid w, MonadIO m)
-  => ReaderT ApiOptions IO (Either (ApiError b) a)
+  => ReaderT (ApiOptions SpecificApiOptions) IO (Either (ApiError b) a)
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rd_Guest actions = do
   opts <- asks rApiOpts
@@ -95,7 +96,7 @@ rd_Guest actions = do
 
 rw
   :: (Monoid w, MonadIO m)
-  => ReaderT ApiOptions IO (Either (ApiError b) a)
+  => ReaderT (ApiOptions SpecificApiOptions) IO (Either (ApiError b) a)
   -> ByteString
   -> RWST RunnerReader w s m (Either (ApiError b) a)
 rw actions s = do

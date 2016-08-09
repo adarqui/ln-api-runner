@@ -41,8 +41,9 @@ import qualified Control.Monad.Trans.Either as Either
 import           Control.Monad.Trans.RWS    (RWST, runRWST)
 import qualified Data.Map                   as M
 import           Data.Text                  (Text)
-import           Haskell.Api.Helpers        (ApiOptions (..),
-                                             defaultWreqOptions)
+import           Haskell.Api.Helpers        (SpecificApiOptions,
+                                             defaultSpecificApiOptions)
+import           Haskell.Api.Helpers.Shared (ApiOptions (..))
 import           LN.T.Api                   (ApiResponse)
 import           LN.T.Pack.Organization     (OrganizationPackResponse)
 import           LN.T.Pack.Sanitized.User   (UserSanitizedPackResponse)
@@ -65,7 +66,7 @@ defaultStackState = StackState {
 
 
 data RunnerReader = RunnerReader {
-  rApiOpts :: ApiOptions
+  rApiOpts :: (ApiOptions SpecificApiOptions)
 }
 
 defaultRunnerReader :: RunnerReader
@@ -107,13 +108,13 @@ defaultRunnerState = RunnerState {
 
 
 
-defaultApiOpts :: ApiOptions
+defaultApiOpts :: ApiOptions SpecificApiOptions
 defaultApiOpts = ApiOptions {
   apiUrl         = "http://dev.adarq.org",
   apiPrefix      = "api",
   apiKey         = Nothing,
   apiKeyHeader   = Just "x-api-authorization",
-  apiWreqOptions = defaultWreqOptions,
+  apiOptions     = defaultSpecificApiOptions,
   apiDebug       = False
 }
 
