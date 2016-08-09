@@ -41,8 +41,6 @@ library
                      , text
                      , transformers
                      , wreq
-                     , text-icu
-                     , text-regex-replace
                      , ln-api
                      , ln-validate
                      , ln-sanitize

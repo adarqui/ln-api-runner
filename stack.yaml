@@ -42,6 +42,7 @@ packages:
 - '../ln-validate'
 - '../haskell-ln-types'
 - '../haskell-api-helpers'
+- '../haskell-api-helpers-shared'
 - '../haskell-ifte'
 - '../haskell-rehtie'
 # Dependency packages to be pulled from upstream that are not in the resolver
