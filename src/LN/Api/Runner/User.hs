@@ -92,9 +92,6 @@ testCreateInvalidUsers = do
     void $ assertFail_ValidateT "Empty plugin = error" (Validate Validate_CannotBeEmpty $ Just "plugin") $
       rd_Super (postUser' $ user { userRequestPlugin = "" })
 
-    void $ assertFail_ValidateT "Empty ident = error" (Validate Validate_CannotBeEmpty $ Just "ident") $
-      rd_Super (postUser' $ user { userRequestIdent = "" })
-
     void $ assertFail_ValidateT "display_name > maxDisplayName = error" (Validate Validate_TooLong $ Just "display_name") $
       rd_Super (postUser' $ user { userRequestDisplayName = T.replicate 33 "A" })
 
